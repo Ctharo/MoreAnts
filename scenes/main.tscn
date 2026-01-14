@@ -1,0 +1,164 @@
+[gd_scene load_steps=4 format=3 uid="uid://b8d0sl0jawxlt"]
+
+[ext_resource type="Script" path="res://main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/world/world.gd" id="2_world"]
+[ext_resource type="Script" path="res://scripts/colony/colony.gd" id="3_colony"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_main")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(1000, 1000)
+zoom = Vector2(0.5, 0.5)
+
+[node name="World" type="Node2D" parent="."]
+script = ExtResource("2_world")
+
+[node name="Colony" type="Node2D" parent="World"]
+script = ExtResource("3_colony")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="StatsPanel" type="PanelContainer" parent="UI"]
+offset_right = 250.0
+offset_bottom = 300.0
+
+[node name="VBox" type="VBoxContainer" parent="UI/StatsPanel"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+text = "Ant Colony Simulator"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+
+[node name="AntCount" type="Label" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+text = "Ants: 0 / 100"
+
+[node name="FoodStored" type="Label" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+text = "Food Stored: 0"
+
+[node name="FoodCollected" type="Label" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+text = "Total Collected: 0"
+
+[node name="Efficiency" type="Label" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+text = "Efficiency: 0.00 food/s"
+
+[node name="SimTime" type="Label" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+text = "Time: 0.0s"
+
+[node name="HSeparator2" type="HSeparator" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+
+[node name="Controls" type="HBoxContainer" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+
+[node name="PlayPause" type="Button" parent="UI/StatsPanel/VBox/Controls"]
+layout_mode = 2
+text = "Pause"
+
+[node name="SpeedSlider" type="HSlider" parent="UI/StatsPanel/VBox/Controls"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.1
+max_value = 5.0
+step = 0.1
+value = 1.0
+
+[node name="SpawnFood" type="Button" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+text = "Spawn Food (F)"
+
+[node name="ToggleEfficiency" type="Button" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+text = "Show Efficiency Panel (E)"
+
+[node name="CostPanel" type="PanelContainer" parent="UI"]
+visible = false
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -300.0
+offset_bottom = 400.0
+grow_horizontal = 0
+
+[node name="VBox" type="VBoxContainer" parent="UI/CostPanel"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="UI/CostPanel/VBox"]
+layout_mode = 2
+text = "Efficiency Analysis"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="UI/CostPanel/VBox"]
+layout_mode = 2
+
+[node name="EfficiencyHeader" type="HBoxContainer" parent="UI/CostPanel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="UI/CostPanel/VBox/EfficiencyHeader"]
+layout_mode = 2
+text = "Global Efficiency:"
+
+[node name="Value" type="Label" parent="UI/CostPanel/VBox/EfficiencyHeader"]
+layout_mode = 2
+text = "0.00"
+
+[node name="FoodPerEnergy" type="HBoxContainer" parent="UI/CostPanel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="UI/CostPanel/VBox/FoodPerEnergy"]
+layout_mode = 2
+text = "Food/Energy:"
+
+[node name="Value" type="Label" parent="UI/CostPanel/VBox/FoodPerEnergy"]
+layout_mode = 2
+text = "0.0000"
+
+[node name="HSeparator2" type="HSeparator" parent="UI/CostPanel/VBox"]
+layout_mode = 2
+
+[node name="CategoriesLabel" type="Label" parent="UI/CostPanel/VBox"]
+layout_mode = 2
+text = "Cost by Category:"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="UI/CostPanel/VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 100)
+
+[node name="CategoryList" type="VBoxContainer" parent="UI/CostPanel/VBox/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HSeparator3" type="HSeparator" parent="UI/CostPanel/VBox"]
+layout_mode = 2
+
+[node name="TopCosts" type="VBoxContainer" parent="UI/CostPanel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="UI/CostPanel/VBox/TopCosts"]
+layout_mode = 2
+text = "Top Costs:"
+
+[node name="List" type="VBoxContainer" parent="UI/CostPanel/VBox/TopCosts"]
+layout_mode = 2
+
+[node name="HSeparator4" type="HSeparator" parent="UI/CostPanel/VBox"]
+layout_mode = 2
+
+[node name="BehaviorBreakdown" type="VBoxContainer" parent="UI/CostPanel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="UI/CostPanel/VBox/BehaviorBreakdown"]
+layout_mode = 2
+text = "Behavior Programs:"
+
+[node name="List" type="VBoxContainer" parent="UI/CostPanel/VBox/BehaviorBreakdown"]
+layout_mode = 2
