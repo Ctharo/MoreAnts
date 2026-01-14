@@ -87,19 +87,19 @@ program.program_name = "Forager"
 var search = BehaviorState.new()
 search.state_name = "Search"
 search.tick_actions = [
-    MoveAction.new()  # WEIGHTED_BLEND of trail + random walk
+	MoveAction.new()  # WEIGHTED_BLEND of trail + random walk
 ]
 search.transitions = [
-    # Found food -> Harvest
-    BehaviorTransition.new() with NearbyCondition(FOOD)
+	# Found food -> Harvest
+	BehaviorTransition.new() with NearbyCondition(FOOD)
 ]
 
 # State: Return with food  
 var return_state = BehaviorState.new()
 return_state.state_name = "Return"
 return_state.tick_actions = [
-    MoveAction.new(),  # TOWARD_NEST
-    PheromoneAction.new()  # Lay trail while returning
+	MoveAction.new(),  # TOWARD_NEST
+	PheromoneAction.new()  # Lay trail while returning
 ]
 ```
 
@@ -148,7 +148,7 @@ ant_simulator/
 │   └── stats/
 │       └── efficiency_tracker.gd
 └── scenes/
-    └── main.tscn
+	└── main.tscn
 ```
 
 ## Controls
@@ -177,8 +177,8 @@ extends BehaviorCondition
 @export var my_param: float = 1.0
 
 func _evaluate_internal(ant: Node, context: Dictionary) -> bool:
-    # Your logic here
-    return context.get("my_value", 0) > my_param
+	# Your logic here
+	return context.get("my_value", 0) > my_param
 ```
 
 ### Custom Actions
@@ -187,12 +187,12 @@ class_name MyAction
 extends BehaviorAction
 
 func _execute_internal(ant: Node, context: Dictionary) -> Dictionary:
-    # Your logic here
-    return {
-        "success": true,
-        "energy_cost": 0.5,
-        "my_custom_key": some_value
-    }
+	# Your logic here
+	return {
+		"success": true,
+		"energy_cost": 0.5,
+		"my_custom_key": some_value
+	}
 ```
 
 ## License
