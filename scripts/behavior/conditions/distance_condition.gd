@@ -51,6 +51,6 @@ func _evaluate_internal(_ant: Node, context: Dictionary) -> bool:
 
 
 func get_debug_string() -> String:
-	var target_str = TargetType.keys()[target_type]
-	var mode_str = CompareMode.keys()[compare_mode]
+	var target_str: String = TargetType.keys()[target_type]
+	var mode_str: String = CompareMode.keys()[compare_mode]
 	return "Distance to %s: %s %.1f" % [target_str, mode_str, threshold]

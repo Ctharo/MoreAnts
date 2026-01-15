@@ -11,8 +11,8 @@ signal harvested(amount: float)
 @export var harvest_rate: float = 5.0  # Max food per pickup
 @export var regeneration_rate: float = 0.0  # Food per second (0 = no regen)
 
-# Visual properties
-@export var base_radius: float = 15.0
+# Visual properties - SMALLER size
+@export var base_radius: float = 6.0
 @export var color: Color = Color.YELLOW_GREEN
 
 # Item properties (for when picked up)
@@ -48,21 +48,21 @@ func _draw() -> void:
 		return
 	
 	# Size based on remaining food
-	var size_ratio = food_amount / max_food
-	var radius = base_radius * (0.3 + 0.7 * size_ratio)
+	var size_ratio: float = food_amount / max_food
+	var radius: float = base_radius * (0.5 + 0.5 * size_ratio)
 	
 	# Draw food
 	draw_circle(Vector2.ZERO, radius, color)
-	draw_arc(Vector2.ZERO, radius, 0, TAU, 16, color.darkened(0.3), 2.0)
+	draw_arc(Vector2.ZERO, radius, 0, TAU, 12, color.darkened(0.3), 1.0)
 
 
 ## Attempt to pick up food from this source
 ## Returns self if successful, null if depleted
 func pickup() -> Node:
-	if food_amount <= 0:
+	if food_amount <= 0 or is_picked_up:
 		return null
 	
-	var amount = minf(harvest_rate, food_amount)
+	var amount: float = minf(harvest_rate, food_amount)
 	food_amount -= amount
 	food_value = amount
 	

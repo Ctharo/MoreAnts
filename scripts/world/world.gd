@@ -17,12 +17,11 @@ signal food_source_depleted(source: Node)
 
 # References
 var pheromone_fields: Dictionary = {}  # String -> PheromoneField
-var spatial_hash  # SpatialHash
+var spatial_hash: SpatialHash = null
 var colonies: Array = []
 var food_sources: Array = []
 
 # Visualization
-var _pheromone_visualizer: Node2D
 var _show_pheromones: bool = true
 
 # Physics tick tracking
@@ -36,11 +35,8 @@ func _ready() -> void:
 	spatial_hash = SpatialHashScript.new(spatial_hash_cell_size)
 
 	# Create default pheromone fields
-	for field_name in default_pheromone_types:
+	for field_name: String in default_pheromone_types:
 		create_pheromone_field(field_name)
-
-	# Set up pheromone visualization
-	_setup_visualization()
 
 	# Set reference in GameManager
 	GameManager.world = self
@@ -50,7 +46,7 @@ func _process(delta: float) -> void:
 	if not GameManager.is_running:
 		return
 
-	var scaled_delta = delta * GameManager.time_scale
+	var scaled_delta: float = delta * GameManager.time_scale
 
 	# Update spatial hash every frame
 	_rebuild_spatial_hash()
@@ -61,51 +57,63 @@ func _process(delta: float) -> void:
 		_physics_accumulator -= _physics_interval
 		_update_pheromone_fields(_physics_interval)
 
-	# Update visualization
+	# Redraw for pheromone visualization
 	if _show_pheromones:
-		_update_pheromone_visualization()
+		queue_redraw()
 
 
 func _rebuild_spatial_hash() -> void:
 	spatial_hash.clear()
 
-	# Add all ants
-	for colony in colonies:
-		for ant in colony.ants:
-			if ant != null and is_instance_valid(ant):
+	# Add all ants (iterate backwards to safely remove invalid entries)
+	for colony: Node in colonies:
+		if colony == null or not is_instance_valid(colony):
+			continue
+		var i: int = colony.ants.size() - 1
+		while i >= 0:
+			var ant: Node = colony.ants[i]
+			if ant == null or not is_instance_valid(ant):
+				colony.ants.remove_at(i)
+			else:
 				spatial_hash.insert(ant)
+			i -= 1
 
-	# Add all food sources
-	for food in food_sources:
-		if food != null and is_instance_valid(food):
+	# Add all food sources (clean up freed ones)
+	var j: int = food_sources.size() - 1
+	while j >= 0:
+		var food: Node = food_sources[j]
+		if food == null or not is_instance_valid(food):
+			food_sources.remove_at(j)
+		elif not food.is_picked_up:
 			spatial_hash.insert(food)
+		j -= 1
 
 
 func _update_pheromone_fields(delta: float) -> void:
-	for field_name in pheromone_fields:
+	for field_name: String in pheromone_fields:
 		pheromone_fields[field_name].update(delta)
 
 
 ## Create a new pheromone field
-func create_pheromone_field(field_name: String, diffusion: float = 0.1, evaporation: float = 0.02):
+func create_pheromone_field(field_name: String, diffusion: float = 0.05, evaporation: float = 0.005) -> PheromoneField:
 	if pheromone_fields.has(field_name):
 		return pheromone_fields[field_name]
 
 	var PheromoneFieldScript = load("res://scripts/world/pheromone_field.gd")
-	var field = PheromoneFieldScript.new(field_name, world_width, world_height, pheromone_cell_size)
+	var field: PheromoneField = PheromoneFieldScript.new(field_name, world_width, world_height, pheromone_cell_size)
 	field.diffusion_rate = diffusion
 	field.evaporation_rate = evaporation
 
 	# Set default colors
 	match field_name:
 		"food_trail":
-			field.color = Color(0.2, 0.8, 0.2, 0.6)  # Green
+			field.color = Color(0.2, 0.9, 0.2, 0.8)  # Bright green
 		"home_trail":
-			field.color = Color(0.2, 0.4, 0.9, 0.6)  # Blue
+			field.color = Color(0.2, 0.4, 0.9, 0.8)  # Blue
 		"alarm":
-			field.color = Color(0.9, 0.2, 0.2, 0.6)  # Red
-			field.evaporation_rate = 0.1  # Alarm fades faster
-			field.diffusion_rate = 0.3   # Alarm spreads faster
+			field.color = Color(0.9, 0.2, 0.2, 0.8)  # Red
+			field.evaporation_rate = 0.05  # Alarm fades faster
+			field.diffusion_rate = 0.2   # Alarm spreads faster
 		_:
 			field.color = Color(0.5, 0.5, 0.5, 0.6)
 
@@ -166,52 +174,66 @@ func _on_food_depleted(food: Node) -> void:
 
 
 ## Create a food source at a position
-func spawn_food_source(pos: Vector2, amount: float = 100.0):
+func spawn_food_source(pos: Vector2, amount: float = 100.0) -> Node:
 	var FoodSourceScript = load("res://scripts/entities/food_source.gd")
-	var food = FoodSourceScript.new()
+	var food: Node = FoodSourceScript.new()
 	food.global_position = pos
 	food.food_amount = amount
+	food.max_food = amount
 	add_food_source(food)
 	return food
 
 
 ## Spawn multiple food sources in a cluster
 func spawn_food_cluster(center: Vector2, count: int, radius: float, total_food: float) -> void:
-	var food_per_source = total_food / count
-	for i in range(count):
-		var angle = randf() * TAU
-		var dist = randf() * radius
-		var pos = center + Vector2(cos(angle), sin(angle)) * dist
+	var food_per_source: float = total_food / count
+	for i: int in range(count):
+		var angle: float = randf() * TAU
+		var dist: float = randf() * radius
+		var pos: Vector2 = center + Vector2(cos(angle), sin(angle)) * dist
 		spawn_food_source(pos, food_per_source)
-
-
-## Setup pheromone visualization
-func _setup_visualization() -> void:
-	_pheromone_visualizer = Node2D.new()
-	_pheromone_visualizer.name = "PheromoneVisualizer"
-	add_child(_pheromone_visualizer)
-	_pheromone_visualizer.z_index = -1
-
-
-func _update_pheromone_visualization() -> void:
-	_pheromone_visualizer.queue_redraw()
 
 
 func _draw() -> void:
 	# Draw world bounds
-	draw_rect(Rect2(0, 0, world_width, world_height), Color(0.1, 0.1, 0.1), false, 2.0)
+	draw_rect(Rect2(0, 0, world_width, world_height), Color(0.2, 0.2, 0.2), false, 2.0)
+	
+	# Draw pheromone fields
+	if _show_pheromones:
+		_draw_pheromones()
+
+
+func _draw_pheromones() -> void:
+	for field_name: String in pheromone_fields:
+		var field: PheromoneField = pheromone_fields[field_name]
+		var cell_size: float = field.cell_size
+		
+		for y: int in range(field.height):
+			for x: int in range(field.width):
+				var value: float = field.get_at(x, y)
+				if value > 0.1:  # Only draw visible amounts
+					var intensity: float = clampf(value / 50.0, 0.0, 1.0)  # Normalize for visibility
+					var draw_color: Color = field.color
+					draw_color.a = intensity * 0.7
+					
+					var rect: Rect2 = Rect2(
+						x * cell_size, 
+						y * cell_size, 
+						cell_size, 
+						cell_size
+					)
+					draw_rect(rect, draw_color, true)
 
 
 ## Toggle pheromone visualization
 func toggle_pheromone_display(show: bool) -> void:
 	_show_pheromones = show
-	_pheromone_visualizer.visible = show
 
 
 ## Get world statistics
 func get_stats() -> Dictionary:
 	var total_pheromone: float = 0.0
-	for field_name in pheromone_fields:
+	for field_name: String in pheromone_fields:
 		total_pheromone += pheromone_fields[field_name].current_total
 
 	return {

@@ -29,7 +29,7 @@ func insert(entity: Node) -> void:
 	if entity == null or not is_instance_valid(entity):
 		return
 	
-	var cell = _get_cell(entity.global_position)
+	var cell: Vector2i = _get_cell(entity.global_position)
 	
 	if not _grid.has(cell):
 		_grid[cell] = []
@@ -42,7 +42,7 @@ func remove(entity: Node) -> void:
 	if entity == null:
 		return
 	
-	var cell = _get_cell(entity.global_position)
+	var cell: Vector2i = _get_cell(entity.global_position)
 	
 	if _grid.has(cell):
 		_grid[cell].erase(entity)
@@ -51,26 +51,26 @@ func remove(entity: Node) -> void:
 ## Query all entities within a radius of a position
 func query_radius(pos: Vector2, radius: float, exclude: Node = null) -> Array:
 	var results: Array = []
-	var radius_sq = radius * radius
+	var radius_sq: float = radius * radius
 	
 	# Calculate cell range to check
-	var min_cell = _get_cell(pos - Vector2(radius, radius))
-	var max_cell = _get_cell(pos + Vector2(radius, radius))
+	var min_cell: Vector2i = _get_cell(pos - Vector2(radius, radius))
+	var max_cell: Vector2i = _get_cell(pos + Vector2(radius, radius))
 	
 	# Check all cells in range
-	for x in range(min_cell.x, max_cell.x + 1):
-		for y in range(min_cell.y, max_cell.y + 1):
-			var cell = Vector2i(x, y)
+	for x: int in range(min_cell.x, max_cell.x + 1):
+		for y: int in range(min_cell.y, max_cell.y + 1):
+			var cell: Vector2i = Vector2i(x, y)
 			if not _grid.has(cell):
 				continue
 			
-			for entity in _grid[cell]:
+			for entity: Node in _grid[cell]:
 				if entity == exclude:
 					continue
 				if not is_instance_valid(entity):
 					continue
 				
-				var dist_sq = pos.distance_squared_to(entity.global_position)
+				var dist_sq: float = pos.distance_squared_to(entity.global_position)
 				if dist_sq <= radius_sq:
 					results.append(entity)
 	
@@ -79,10 +79,10 @@ func query_radius(pos: Vector2, radius: float, exclude: Node = null) -> Array:
 
 ## Query entities within radius that belong to a specific group
 func query_radius_group(pos: Vector2, radius: float, group_name: String, exclude: Node = null) -> Array:
-	var all_nearby = query_radius(pos, radius, exclude)
+	var all_nearby: Array = query_radius(pos, radius, exclude)
 	var results: Array = []
 	
-	for entity in all_nearby:
+	for entity: Node in all_nearby:
 		if entity.is_in_group(group_name):
 			results.append(entity)
 	
@@ -91,16 +91,16 @@ func query_radius_group(pos: Vector2, radius: float, group_name: String, exclude
 
 ## Query the nearest entity within radius
 func query_nearest(pos: Vector2, radius: float, exclude: Node = null) -> Node:
-	var nearby = query_radius(pos, radius, exclude)
+	var nearby: Array = query_radius(pos, radius, exclude)
 	
 	if nearby.is_empty():
 		return null
 	
 	var nearest: Node = null
-	var nearest_dist_sq = INF
+	var nearest_dist_sq: float = INF
 	
-	for entity in nearby:
-		var dist_sq = pos.distance_squared_to(entity.global_position)
+	for entity: Node in nearby:
+		var dist_sq: float = pos.distance_squared_to(entity.global_position)
 		if dist_sq < nearest_dist_sq:
 			nearest_dist_sq = dist_sq
 			nearest = entity
@@ -110,16 +110,16 @@ func query_nearest(pos: Vector2, radius: float, exclude: Node = null) -> Node:
 
 ## Query nearest entity in a specific group
 func query_nearest_group(pos: Vector2, radius: float, group_name: String, exclude: Node = null) -> Node:
-	var nearby = query_radius_group(pos, radius, group_name, exclude)
+	var nearby: Array = query_radius_group(pos, radius, group_name, exclude)
 	
 	if nearby.is_empty():
 		return null
 	
 	var nearest: Node = null
-	var nearest_dist_sq = INF
+	var nearest_dist_sq: float = INF
 	
-	for entity in nearby:
-		var dist_sq = pos.distance_squared_to(entity.global_position)
+	for entity: Node in nearby:
+		var dist_sq: float = pos.distance_squared_to(entity.global_position)
 		if dist_sq < nearest_dist_sq:
 			nearest_dist_sq = dist_sq
 			nearest = entity
@@ -143,12 +143,12 @@ func get_cell_contents(cell: Vector2i) -> Array:
 
 ## Get statistics about the hash
 func get_stats() -> Dictionary:
-	var total_entities = 0
-	var max_per_cell = 0
-	var non_empty_cells = 0
+	var total_entities: int = 0
+	var max_per_cell: int = 0
+	var non_empty_cells: int = 0
 	
-	for cell in _grid:
-		var count = _grid[cell].size()
+	for cell: Vector2i in _grid:
+		var count: int = _grid[cell].size()
 		if count > 0:
 			non_empty_cells += 1
 			total_entities += count

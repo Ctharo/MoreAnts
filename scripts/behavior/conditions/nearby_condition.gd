@@ -54,6 +54,6 @@ func _evaluate_internal(_ant: Node, context: Dictionary) -> bool:
 
 
 func get_debug_string() -> String:
-	var type_str = EntityType.keys()[entity_type]
-	var mode_str = CountMode.keys()[count_mode]
+	var type_str: String = EntityType.keys()[entity_type]
+	var mode_str: String = CountMode.keys()[count_mode]
 	return "Nearby %s: %s" % [type_str, mode_str]

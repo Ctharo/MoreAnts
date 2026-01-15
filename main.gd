@@ -1,8 +1,8 @@
 extends Node2D
 ## Main scene controller - connects UI and manages the simulation
 
-@onready var world = $World  # SimulationWorld
-@onready var colony = $World/Colony  # Colony
+@onready var world: Node2D = $World  # SimulationWorld
+@onready var colony: Node2D = $World/Colony  # Colony
 
 # UI References
 @onready var ant_count_label: Label = $UI/StatsPanel/VBox/AntCount
@@ -76,8 +76,8 @@ func _process(_delta: float) -> void:
 
 
 func _handle_camera_input() -> void:
-	var move_speed = 500.0 / camera.zoom.x
-	var move = Vector2.ZERO
+	var move_speed: float = 500.0 / camera.zoom.x
+	var move: Vector2 = Vector2.ZERO
 
 	if Input.is_action_pressed("ui_left"):
 		move.x -= 1
@@ -101,7 +101,7 @@ func _handle_camera_input() -> void:
 
 func _spawn_initial_food() -> void:
 	# Spawn several food clusters around the map
-	var cluster_positions = [
+	var cluster_positions: Array[Vector2] = [
 		Vector2(400, 400),
 		Vector2(1600, 400),
 		Vector2(400, 1600),
@@ -110,12 +110,12 @@ func _spawn_initial_food() -> void:
 		Vector2(1000, 1800),
 	]
 
-	for pos in cluster_positions:
+	for pos: Vector2 in cluster_positions:
 		world.spawn_food_cluster(pos, 8, 100.0, 200.0)
 
 
 func _update_ui() -> void:
-	var stats = colony.get_stats()
+	var stats: Dictionary = colony.get_stats()
 
 	ant_count_label.text = "Ants: %d / %d" % [stats.ant_count, stats.max_ants]
 	food_stored_label.text = "Food Stored: %.0f" % stats.food_stored
@@ -124,7 +124,7 @@ func _update_ui() -> void:
 	sim_time_label.text = "Time: %.1fs" % GameManager.simulation_time
 
 	# Update global efficiency
-	var global_eff = GameManager.get_efficiency_ratio()
+	var global_eff: float = GameManager.get_efficiency_ratio()
 	if global_eff > 0:
 		efficiency_label.text += " (%.3f f/e)" % global_eff
 
@@ -133,10 +133,10 @@ func _update_cost_panel() -> void:
 	if not is_instance_valid(CostTracker):
 		return
 
-	var report = CostTracker.get_efficiency_report()
+	var report: Dictionary = CostTracker.get_efficiency_report()
 
 	# Update main metrics
-	var eff = report.get("global_efficiency", 0.0)
+	var eff: float = report.get("global_efficiency", 0.0)
 	cost_efficiency_label.text = "%.2f" % eff
 	if eff > 50:
 		cost_efficiency_label.add_theme_color_override("font_color", Color.GREEN)
@@ -145,8 +145,8 @@ func _update_cost_panel() -> void:
 	else:
 		cost_efficiency_label.add_theme_color_override("font_color", Color.RED)
 
-	var food = report.get("total_food", 0.0)
-	var energy = maxf(report.get("total_energy", 0.001), 0.001)
+	var food: float = report.get("total_food", 0.0)
+	var energy: float = maxf(report.get("total_energy", 0.001), 0.001)
 	cost_food_energy_label.text = "%.4f" % (food / energy)
 
 	# Update category breakdown
@@ -161,25 +161,25 @@ func _update_cost_panel() -> void:
 
 func _update_category_list(report: Dictionary) -> void:
 	# Clear existing
-	for child in category_list.get_children():
+	for child: Node in category_list.get_children():
 		child.queue_free()
 
-	var categories = report.get("categories", {})
-	var total_cost = maxf(report.get("total_energy", 0.001), 0.001)
+	var categories: Dictionary = report.get("categories", {})
+	var total_cost: float = maxf(report.get("total_energy", 0.001), 0.001)
 
-	for category_name in categories:
-		var cat_data = categories[category_name]
-		var cat_cost = cat_data.get("total_cost", 0.0)
-		var percent = (cat_cost / total_cost) * 100.0 if total_cost > 0 else 0.0
+	for category_name: String in categories:
+		var cat_data: Dictionary = categories[category_name]
+		var cat_cost: float = cat_data.get("total_cost", 0.0)
+		var percent: float = (cat_cost / total_cost) * 100.0 if total_cost > 0 else 0.0
 
-		var row = HBoxContainer.new()
+		var row: HBoxContainer = HBoxContainer.new()
 
-		var color_rect = ColorRect.new()
+		var color_rect: ColorRect = ColorRect.new()
 		color_rect.custom_minimum_size = Vector2(10, 10)
 		color_rect.color = category_colors.get(category_name, Color.GRAY)
 		row.add_child(color_rect)
 
-		var name_label = Label.new()
+		var name_label: Label = Label.new()
 		name_label.text = " %s: %.1f (%.0f%%)" % [category_name.capitalize(), cat_cost, percent]
 		name_label.add_theme_font_size_override("font_size", 12)
 		row.add_child(name_label)
@@ -189,14 +189,14 @@ func _update_category_list(report: Dictionary) -> void:
 
 func _update_top_costs_list() -> void:
 	# Clear existing
-	for child in top_costs_list.get_children():
+	for child: Node in top_costs_list.get_children():
 		child.queue_free()
 
-	var costs = CostTracker.get_action_cost_comparison()
+	var costs: Array[Dictionary] = CostTracker.get_action_cost_comparison()
 
-	for i in range(min(5, costs.size())):
-		var item = costs[i]
-		var label = Label.new()
+	for i: int in range(mini(5, costs.size())):
+		var item: Dictionary = costs[i]
+		var label: Label = Label.new()
 		label.text = "%s: %.1f (%.1f%%)" % [item.get("action", "?"), item.get("total", 0.0), item.get("percent", 0.0)]
 		label.add_theme_font_size_override("font_size", 11)
 		top_costs_list.add_child(label)
@@ -204,15 +204,15 @@ func _update_top_costs_list() -> void:
 
 func _update_behavior_list(report: Dictionary) -> void:
 	# Clear existing
-	for child in behavior_list.get_children():
+	for child: Node in behavior_list.get_children():
 		child.queue_free()
 
-	var behaviors = report.get("behaviors", {})
+	var behaviors: Dictionary = report.get("behaviors", {})
 
-	for program_name in behaviors:
-		var data = behaviors[program_name]
-		var label = Label.new()
-		var eff_val = data.get("efficiency", 0.0)
+	for program_name: String in behaviors:
+		var data: Dictionary = behaviors[program_name]
+		var label: Label = Label.new()
+		var eff_val: float = data.get("efficiency", 0.0)
 		label.text = "%s: Eff=%.2f, Cost=%.1f" % [program_name, eff_val, data.get("total_cost", 0.0)]
 		label.add_theme_font_size_override("font_size", 11)
 		if eff_val > 50:
@@ -239,7 +239,7 @@ func _on_speed_changed(value: float) -> void:
 
 func _on_spawn_food_pressed() -> void:
 	# Spawn a food cluster at a random position
-	var pos = Vector2(
+	var pos: Vector2 = Vector2(
 		randf_range(200, world.world_width - 200),
 		randf_range(200, world.world_height - 200)
 	)
@@ -263,10 +263,13 @@ func _input(event: InputEvent) -> void:
 				get_tree().reload_current_scene()
 			KEY_E:
 				_on_toggle_efficiency_pressed()
+			KEY_P:
+				# Toggle pheromone display
+				world.toggle_pheromone_display(not world._show_pheromones)
 
 
-## Create the default forager behavior inline to avoid class loading issues
-func _create_default_forager():
+## Create the default forager behavior with proper pheromone usage and energy management
+func _create_default_forager() -> BehaviorProgram:
 	var BehaviorProgramScript = load("res://scripts/behavior/behavior_program.gd")
 	var BehaviorStateScript = load("res://scripts/behavior/behavior_state.gd")
 	var BehaviorTransitionScript = load("res://scripts/behavior/behavior_transition.gd")
@@ -279,130 +282,221 @@ func _create_default_forager():
 	var DistanceConditionScript = load("res://scripts/behavior/conditions/distance_condition.gd")
 	var EnergyConditionScript = load("res://scripts/behavior/conditions/energy_condition.gd")
 
-	var program = BehaviorProgramScript.new()
+	var program: BehaviorProgram = BehaviorProgramScript.new()
 	program.program_name = "Basic Forager"
-	program.description = "A simple foraging behavior"
+	program.description = "A foraging behavior with energy management"
 
-	# Search state
-	var search_state = BehaviorStateScript.new()
+	#region Search State - Looking for food
+	var search_state: BehaviorState = BehaviorStateScript.new()
 	search_state.state_name = "Search"
 	search_state.display_color = Color.YELLOW
 
-	var search_move = MoveActionScript.new()
-	search_move.move_mode = 9  # WEIGHTED_BLEND
+	var search_move: MoveAction = MoveActionScript.new()
+	search_move.move_mode = MoveAction.MoveMode.WEIGHTED_BLEND
 	search_move.pheromone_name = "food_trail"
-	search_move.blend_weights = {"pheromone": 0.5, "random": 0.4, "nest": 0.1}
+	search_move.blend_weights = {"pheromone": 0.6, "random": 0.35, "nest": -0.05}
+	search_move.speed_multiplier = 1.0
 	search_state.tick_actions = [search_move] as Array[BehaviorAction]
 
-	var found_food_trans = BehaviorTransitionScript.new()
+	# Transition: Found food nearby -> Harvest
+	var found_food_trans: BehaviorTransition = BehaviorTransitionScript.new()
 	found_food_trans.target_state = "Harvest"
-	var food_nearby = NearbyConditionScript.new()
-	food_nearby.entity_type = 0  # FOOD
-	food_nearby.count_mode = 0   # ANY
-	food_nearby.search_radius = 25.0
+	var food_nearby: NearbyCondition = NearbyConditionScript.new()
+	food_nearby.entity_type = NearbyCondition.EntityType.FOOD
+	food_nearby.count_mode = NearbyCondition.CountMode.ANY
+	food_nearby.search_radius = 30.0
 	found_food_trans.condition = food_nearby
 	found_food_trans.priority = 10
 
-	var low_energy_trans = BehaviorTransitionScript.new()
-	low_energy_trans.target_state = "Return"
-	var low_energy = EnergyConditionScript.new()
-	low_energy.compare_mode = 1  # BELOW_PERCENT
-	low_energy.threshold = 30.0
-	low_energy_trans.condition = low_energy
-	low_energy_trans.priority = 5
+	# Transition: Low energy -> GoHome (to refill)
+	var low_energy_search_trans: BehaviorTransition = BehaviorTransitionScript.new()
+	low_energy_search_trans.target_state = "GoHome"
+	var low_energy_search: EnergyCondition = EnergyConditionScript.new()
+	low_energy_search.compare_mode = EnergyCondition.CompareMode.BELOW_PERCENT
+	low_energy_search.threshold = 30.0
+	low_energy_search_trans.condition = low_energy_search
+	low_energy_search_trans.priority = 15  # Higher priority than food
 
-	search_state.transitions = [found_food_trans, low_energy_trans] as Array[BehaviorTransition]
+	search_state.transitions = [low_energy_search_trans, found_food_trans] as Array[BehaviorTransition]
+	#endregion
 
-	# Harvest state
-	var harvest_state = BehaviorStateScript.new()
+	#region Harvest State - Picking up food
+	var harvest_state: BehaviorState = BehaviorStateScript.new()
 	harvest_state.state_name = "Harvest"
 	harvest_state.display_color = Color.ORANGE
 
-	var harvest_move = MoveActionScript.new()
-	harvest_move.move_mode = 5  # TOWARD_NEAREST_FOOD
-	harvest_move.speed_multiplier = 0.8
+	var harvest_move: MoveAction = MoveActionScript.new()
+	harvest_move.move_mode = MoveAction.MoveMode.TOWARD_NEAREST_FOOD
+	harvest_move.speed_multiplier = 0.7
 
-	var pickup = PickupActionScript.new()
-	pickup.pickup_target = 0  # NEAREST_FOOD
-	pickup.pickup_range = 15.0
+	var pickup: PickupAction = PickupActionScript.new()
+	pickup.pickup_target = PickupAction.PickupTarget.NEAREST_FOOD
+	pickup.pickup_range = 20.0
 
 	harvest_state.tick_actions = [harvest_move, pickup] as Array[BehaviorAction]
 
-	var got_food_trans = BehaviorTransitionScript.new()
+	# Transition: Got food -> Return
+	var got_food_trans: BehaviorTransition = BehaviorTransitionScript.new()
 	got_food_trans.target_state = "Return"
-	var carrying = CarryingConditionScript.new()
-	carrying.carry_mode = 0  # CARRYING_ANYTHING
+	var carrying: CarryingCondition = CarryingConditionScript.new()
+	carrying.carry_mode = CarryingCondition.CarryMode.CARRYING_ANYTHING
 	got_food_trans.condition = carrying
 	got_food_trans.priority = 10
 
-	var no_food_trans = BehaviorTransitionScript.new()
+	# Transition: No food around -> Search
+	var no_food_trans: BehaviorTransition = BehaviorTransitionScript.new()
 	no_food_trans.target_state = "Search"
-	var no_food = NearbyConditionScript.new()
-	no_food.entity_type = 0  # FOOD
-	no_food.count_mode = 1   # NONE
-	no_food.search_radius = 50.0
+	var no_food: NearbyCondition = NearbyConditionScript.new()
+	no_food.entity_type = NearbyCondition.EntityType.FOOD
+	no_food.count_mode = NearbyCondition.CountMode.NONE
+	no_food.search_radius = 60.0
 	no_food_trans.condition = no_food
 	no_food_trans.priority = 5
-	no_food_trans.cooldown_ticks = 10
+	no_food_trans.cooldown_ticks = 5
 
-	harvest_state.transitions = [got_food_trans, no_food_trans] as Array[BehaviorTransition]
+	# Transition: Very low energy -> drop food thoughts, go home
+	var critical_energy_harvest: BehaviorTransition = BehaviorTransitionScript.new()
+	critical_energy_harvest.target_state = "GoHome"
+	var crit_energy_h: EnergyCondition = EnergyConditionScript.new()
+	crit_energy_h.compare_mode = EnergyCondition.CompareMode.BELOW_PERCENT
+	crit_energy_h.threshold = 20.0
+	critical_energy_harvest.condition = crit_energy_h
+	critical_energy_harvest.priority = 15
 
-	# Return state
-	var return_state = BehaviorStateScript.new()
+	harvest_state.transitions = [critical_energy_harvest, got_food_trans, no_food_trans] as Array[BehaviorTransition]
+	#endregion
+
+	#region Return State - Carrying food back to nest
+	var return_state: BehaviorState = BehaviorStateScript.new()
 	return_state.state_name = "Return"
 	return_state.display_color = Color.GREEN
 
-	var return_move = MoveActionScript.new()
-	return_move.move_mode = 2  # TOWARD_NEST
+	var return_move: MoveAction = MoveActionScript.new()
+	return_move.move_mode = MoveAction.MoveMode.TOWARD_NEST
+	return_move.speed_multiplier = 0.9
 
-	var deposit_pheromone = PheromoneActionScript.new()
+	var deposit_pheromone: PheromoneAction = PheromoneActionScript.new()
 	deposit_pheromone.pheromone_name = "food_trail"
-	deposit_pheromone.deposit_mode = 3  # INVERSELY_TO_DISTANCE
-	deposit_pheromone.base_amount = 2.0
+	deposit_pheromone.deposit_mode = PheromoneAction.DepositMode.CONSTANT
+	deposit_pheromone.base_amount = 3.0
 	deposit_pheromone.max_amount = 5.0
-	deposit_pheromone.reference_distance = 300.0
+	deposit_pheromone.use_spread = true
+	deposit_pheromone.spread_radius = 1
 
 	return_state.tick_actions = [return_move, deposit_pheromone] as Array[BehaviorAction]
 
-	var at_nest_trans = BehaviorTransitionScript.new()
+	# Transition: At nest -> Deposit
+	var at_nest_trans: BehaviorTransition = BehaviorTransitionScript.new()
 	at_nest_trans.target_state = "Deposit"
-	var at_nest = DistanceConditionScript.new()
-	at_nest.target_type = 0  # NEST
-	at_nest.compare_mode = 0  # CLOSER_THAN
-	at_nest.threshold = 30.0
+	var at_nest: DistanceCondition = DistanceConditionScript.new()
+	at_nest.target_type = DistanceCondition.TargetType.NEST
+	at_nest.compare_mode = DistanceCondition.CompareMode.CLOSER_THAN
+	at_nest.threshold = 50.0
 	at_nest_trans.condition = at_nest
 	at_nest_trans.priority = 10
 
-	var lost_food_trans = BehaviorTransitionScript.new()
+	# Transition: Lost food somehow -> Search
+	var lost_food_trans: BehaviorTransition = BehaviorTransitionScript.new()
 	lost_food_trans.target_state = "Search"
-	var not_carrying = CarryingConditionScript.new()
-	not_carrying.carry_mode = 1  # CARRYING_NOTHING
+	var not_carrying: CarryingCondition = CarryingConditionScript.new()
+	not_carrying.carry_mode = CarryingCondition.CarryMode.CARRYING_NOTHING
 	lost_food_trans.condition = not_carrying
 	lost_food_trans.priority = 5
 
 	return_state.transitions = [at_nest_trans, lost_food_trans] as Array[BehaviorTransition]
+	#endregion
 
-	# Deposit state
-	var deposit_state = BehaviorStateScript.new()
+	#region Deposit State - At nest, dropping food
+	var deposit_state: BehaviorState = BehaviorStateScript.new()
 	deposit_state.state_name = "Deposit"
 	deposit_state.display_color = Color.BLUE
 
-	var drop = DropActionScript.new()
-	drop.drop_mode = 1  # DROP_AT_NEST
-	drop.nest_threshold = 40.0
+	var drop: DropAction = DropActionScript.new()
+	drop.drop_mode = DropAction.DropMode.DROP_AT_NEST
+	drop.nest_threshold = 60.0
 
 	deposit_state.tick_actions = [drop] as Array[BehaviorAction]
 
-	var deposited_trans = BehaviorTransitionScript.new()
+	# Transition: Deposited food, low energy -> Rest
+	var need_rest_trans: BehaviorTransition = BehaviorTransitionScript.new()
+	need_rest_trans.target_state = "Rest"
+	var need_rest_cond: EnergyCondition = EnergyConditionScript.new()
+	need_rest_cond.compare_mode = EnergyCondition.CompareMode.BELOW_PERCENT
+	need_rest_cond.threshold = 70.0
+	need_rest_trans.condition = need_rest_cond
+	need_rest_trans.priority = 5
+
+	# Transition: Deposited food, good energy -> Search
+	var deposited_trans: BehaviorTransition = BehaviorTransitionScript.new()
 	deposited_trans.target_state = "Search"
-	var empty_hands = CarryingConditionScript.new()
-	empty_hands.carry_mode = 1  # CARRYING_NOTHING
+	var empty_hands: CarryingCondition = CarryingConditionScript.new()
+	empty_hands.carry_mode = CarryingCondition.CarryMode.CARRYING_NOTHING
 	deposited_trans.condition = empty_hands
-	deposited_trans.priority = 10
+	deposited_trans.priority = 3
 
-	deposit_state.transitions = [deposited_trans] as Array[BehaviorTransition]
+	deposit_state.transitions = [need_rest_trans, deposited_trans] as Array[BehaviorTransition]
+	#endregion
 
-	program.states = [search_state, harvest_state, return_state, deposit_state] as Array[BehaviorState]
+	#region GoHome State - Returning to nest for energy (not carrying food)
+	var go_home_state: BehaviorState = BehaviorStateScript.new()
+	go_home_state.state_name = "GoHome"
+	go_home_state.display_color = Color.CYAN
+
+	var go_home_move: MoveAction = MoveActionScript.new()
+	go_home_move.move_mode = MoveAction.MoveMode.TOWARD_NEST
+	go_home_move.speed_multiplier = 1.0  # Move fast when hungry
+
+	go_home_state.tick_actions = [go_home_move] as Array[BehaviorAction]
+
+	# Transition: At nest -> Rest
+	var home_arrived_trans: BehaviorTransition = BehaviorTransitionScript.new()
+	home_arrived_trans.target_state = "Rest"
+	var home_arrived: DistanceCondition = DistanceConditionScript.new()
+	home_arrived.target_type = DistanceCondition.TargetType.NEST
+	home_arrived.compare_mode = DistanceCondition.CompareMode.CLOSER_THAN
+	home_arrived.threshold = 50.0
+	home_arrived_trans.condition = home_arrived
+	home_arrived_trans.priority = 10
+
+	go_home_state.transitions = [home_arrived_trans] as Array[BehaviorTransition]
+	#endregion
+
+	#region Rest State - Staying at nest to refill energy
+	var rest_state: BehaviorState = BehaviorStateScript.new()
+	rest_state.state_name = "Rest"
+	rest_state.display_color = Color.MEDIUM_PURPLE
+
+	# Stay still at nest
+	var rest_move: MoveAction = MoveActionScript.new()
+	rest_move.move_mode = MoveAction.MoveMode.RANDOM_WALK
+	rest_move.speed_multiplier = 0.1  # Barely move
+	rest_move.random_turn_rate = 0.1
+
+	rest_state.tick_actions = [rest_move] as Array[BehaviorAction]
+
+	# Transition: Energy restored -> Search
+	var energy_restored_trans: BehaviorTransition = BehaviorTransitionScript.new()
+	energy_restored_trans.target_state = "Search"
+	var energy_restored: EnergyCondition = EnergyConditionScript.new()
+	energy_restored.compare_mode = EnergyCondition.CompareMode.ABOVE_PERCENT
+	energy_restored.threshold = 80.0
+	energy_restored_trans.condition = energy_restored
+	energy_restored_trans.priority = 10
+
+	# Transition: Wandered away from nest -> GoHome
+	var wandered_away_trans: BehaviorTransition = BehaviorTransitionScript.new()
+	wandered_away_trans.target_state = "GoHome"
+	var wandered_away: DistanceCondition = DistanceConditionScript.new()
+	wandered_away.target_type = DistanceCondition.TargetType.NEST
+	wandered_away.compare_mode = DistanceCondition.CompareMode.FARTHER_THAN
+	wandered_away.threshold = 60.0
+	wandered_away_trans.condition = wandered_away
+	wandered_away_trans.priority = 5
+
+	rest_state.transitions = [energy_restored_trans, wandered_away_trans] as Array[BehaviorTransition]
+	#endregion
+
+	program.states = [search_state, harvest_state, return_state, deposit_state, go_home_state, rest_state] as Array[BehaviorState]
 	program.initial_state = "Search"
 
 	return program

@@ -3,16 +3,16 @@ extends BehaviorAction
 ## Action that controls ant movement and steering
 
 enum MoveMode {
-	FOLLOW_PHEROMONE = 0,      # Gradient ascent on pheromone field
-	AVOID_PHEROMONE = 1,       # Gradient descent (flee from scent)
-	TOWARD_NEST = 2,           # Follow path integrator home
-	AWAY_FROM_NEST = 3,        # Explore away from nest
-	RANDOM_WALK = 4,           # Correlated random walk
-	TOWARD_NEAREST_FOOD = 5,   # Beeline to detected food
-	TOWARD_NEAREST_ANT = 6,    # Move toward nearest ant
-	AWAY_FROM_NEAREST_ANT = 7, # Flee from nearest ant
-	FOLLOW_ANT = 8,            # Follow an ant with food
-	WEIGHTED_BLEND = 9,        # Combine multiple influences
+	FOLLOW_PHEROMONE = 0,      ## Gradient ascent on pheromone field
+	AVOID_PHEROMONE = 1,       ## Gradient descent (flee from scent)
+	TOWARD_NEST = 2,           ## Follow path integrator home
+	AWAY_FROM_NEST = 3,        ## Explore away from nest
+	RANDOM_WALK = 4,           ## Correlated random walk
+	TOWARD_NEAREST_FOOD = 5,   ## Beeline to detected food
+	TOWARD_NEAREST_ANT = 6,    ## Move toward nearest ant
+	AWAY_FROM_NEAREST_ANT = 7, ## Flee from nearest ant
+	FOLLOW_ANT = 8,            ## Follow an ant with food
+	WEIGHTED_BLEND = 9,        ## Combine multiple influences
 }
 
 ## Movement mode
@@ -32,7 +32,7 @@ enum MoveMode {
 }
 
 ## Random walk parameters
-@export var random_turn_rate: float = 0.5  # Radians max turn per tick
+@export var random_turn_rate: float = 0.3  # Radians max turn per tick
 @export var random_bias: float = 0.0       # Bias direction in radians
 
 
@@ -77,7 +77,7 @@ func _execute_internal(ant: Node, context: Dictionary) -> Dictionary:
 	# Normalize heading
 	desired_heading = fmod(desired_heading + TAU, TAU)
 	
-	var energy_cost = base_energy_cost * speed_multiplier
+	var energy_cost: float = base_energy_cost * speed_multiplier
 	
 	return {
 		"success": true,
@@ -88,43 +88,51 @@ func _execute_internal(ant: Node, context: Dictionary) -> Dictionary:
 
 
 func _calculate_pheromone_heading(context: Dictionary, follow: bool) -> float:
-	var samples = context.get("pheromone_" + pheromone_name, {})
+	var samples: Dictionary = context.get("pheromone_" + pheromone_name, {})
 	var current_heading: float = context.get("heading", 0.0)
 	
 	if samples.is_empty():
-		return current_heading
+		return _calculate_random_heading(context)
 	
 	var left: float = samples.get("left", 0.0)
 	var center: float = samples.get("center", 0.0)
 	var right: float = samples.get("right", 0.0)
 	
 	# If no pheromone detected, random walk
-	if left + center + right < 0.001:
+	if left + center + right < 0.1:
 		return _calculate_random_heading(context)
 	
-	# Calculate gradient direction
+	# Calculate gradient direction using weighted steering
+	var sensor_angle: float = PI / 6  # 30 degrees
 	var turn_amount: float = 0.0
-	var sensor_angle = PI / 6  # 30 degrees
 	
 	if follow:
-		# Turn toward higher concentration
-		if left > right and left > center:
-			turn_amount = -sensor_angle * 0.5
-		elif right > left and right > center:
-			turn_amount = sensor_angle * 0.5
+		# Turn toward higher concentration with proportional response
+		var total: float = left + center + right
+		if total > 0.1:
+			# Calculate weighted direction
+			var left_weight: float = left / total
+			var right_weight: float = right / total
+			var diff: float = right_weight - left_weight
+			
+			# Proportional steering based on gradient strength
+			turn_amount = diff * sensor_angle * 1.5
+			
+			# Add small random component for exploration
+			turn_amount += randf_range(-0.1, 0.1)
 	else:
 		# Turn away from higher concentration
 		if left > right and left > center:
-			turn_amount = sensor_angle * 0.5
+			turn_amount = sensor_angle * 0.7
 		elif right > left and right > center:
-			turn_amount = -sensor_angle * 0.5
+			turn_amount = -sensor_angle * 0.7
 	
 	return current_heading + turn_amount
 
 
 func _calculate_random_heading(context: Dictionary) -> float:
 	var current_heading: float = context.get("heading", 0.0)
-	var turn = randf_range(-random_turn_rate, random_turn_rate)
+	var turn: float = randf_range(-random_turn_rate, random_turn_rate)
 	return current_heading + turn + random_bias
 
 
@@ -136,33 +144,40 @@ func _calculate_blended_heading(context: Dictionary) -> float:
 	
 	# Pheromone influence
 	if blend_weights.has("pheromone") and blend_weights.pheromone > 0:
-		var pheromone_heading = _calculate_pheromone_heading(context, true)
-		var w = blend_weights.pheromone
+		var pheromone_heading: float = _calculate_pheromone_heading(context, true)
+		var w: float = blend_weights.pheromone
+		
+		# Boost pheromone weight if there's strong signal
+		var samples: Dictionary = context.get("pheromone_" + pheromone_name, {})
+		var pheromone_total: float = samples.get("total", 0.0)
+		if pheromone_total > 1.0:
+			w *= minf(pheromone_total / 5.0, 2.0)  # Up to 2x weight for strong signals
+		
 		weighted_x += cos(pheromone_heading) * w
 		weighted_y += sin(pheromone_heading) * w
 		total_weight += w
 	
 	# Random walk influence
 	if blend_weights.has("random") and blend_weights.random > 0:
-		var random_heading = _calculate_random_heading(context)
-		var w = blend_weights.random
+		var random_heading: float = _calculate_random_heading(context)
+		var w: float = blend_weights.random
 		weighted_x += cos(random_heading) * w
 		weighted_y += sin(random_heading) * w
 		total_weight += w
 	
-	# Nest influence (toward or away)
-	if blend_weights.has("nest") and blend_weights.nest > 0:
-		var nest_dir = context.get("nest_direction", current_heading)
-		var w = blend_weights.nest
+	# Nest influence (toward or away based on sign)
+	if blend_weights.has("nest") and absf(blend_weights.nest) > 0.001:
+		var nest_dir: float = context.get("nest_direction", current_heading)
+		var w: float = blend_weights.nest  # Can be negative for "away from nest"
 		weighted_x += cos(nest_dir) * w
 		weighted_y += sin(nest_dir) * w
-		total_weight += w
+		total_weight += absf(w)
 	
 	# Food influence
 	if blend_weights.has("food") and blend_weights.food > 0:
 		if context.has("nearest_food_direction"):
-			var food_dir = context.get("nearest_food_direction")
-			var w = blend_weights.food
+			var food_dir: float = context.get("nearest_food_direction")
+			var w: float = blend_weights.food
 			weighted_x += cos(food_dir) * w
 			weighted_y += sin(food_dir) * w
 			total_weight += w

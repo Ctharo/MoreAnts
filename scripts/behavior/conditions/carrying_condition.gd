@@ -17,8 +17,8 @@ func _init() -> void:
 
 
 func _evaluate_internal(_ant: Node, context: Dictionary) -> bool:
-	var carried = context.get("carried_item", null)
-	var carried_type = context.get("carried_type", "")
+	var carried: Variant = context.get("carried_item", null)
+	var carried_type: String = context.get("carried_type", "")
 	
 	match carry_mode:
 		CarryMode.CARRYING_ANYTHING:

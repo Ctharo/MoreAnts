@@ -40,5 +40,5 @@ func _evaluate_internal(_ant: Node, context: Dictionary) -> bool:
 
 
 func get_debug_string() -> String:
-	var mode_str = CompareMode.keys()[compare_mode]
+	var mode_str: String = CompareMode.keys()[compare_mode]
 	return "Energy %s %.1f" % [mode_str, threshold]

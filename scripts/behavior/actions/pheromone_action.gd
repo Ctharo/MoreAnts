@@ -3,10 +3,10 @@ extends BehaviorAction
 ## Action that deposits pheromones into the environment
 
 enum DepositMode {
-	CONSTANT = 0,              # Always deposit same amount
-	PROPORTIONAL_TO_FOOD = 1,  # More if carrying more food
-	INVERSELY_TO_DISTANCE = 3, # More when closer to target
-	PULSE = 4,                 # Deposit in bursts
+	CONSTANT = 0,              ## Always deposit same amount
+	PROPORTIONAL_TO_FOOD = 1,  ## More if carrying more food
+	INVERSELY_TO_DISTANCE = 3, ## More when closer to target
+	PULSE = 4,                 ## Deposit in bursts
 }
 
 ## Name of the pheromone field to deposit into
@@ -53,14 +53,15 @@ func _execute_internal(_ant: Node, context: Dictionary) -> Dictionary:
 		DepositMode.CONSTANT:
 			amount = base_amount
 		DepositMode.PROPORTIONAL_TO_FOOD:
-			var carried = context.get("carried_weight", 0.0)
+			var carried: float = context.get("carried_weight", 0.0)
 			if carried > 0:
 				amount = base_amount + (carried * 0.5)
 			else:
 				amount = base_amount * 0.5
 		DepositMode.INVERSELY_TO_DISTANCE:
-			var nest_dist = context.get("nest_distance", reference_distance)
-			var factor = 1.0 - clampf(nest_dist / reference_distance, 0.0, 1.0)
+			var nest_dist: float = context.get("nest_distance", reference_distance)
+			# More pheromone FURTHER from nest (where food was found)
+			var factor: float = clampf(nest_dist / reference_distance, 0.0, 1.0)
 			amount = base_amount + (max_amount - base_amount) * factor
 		DepositMode.PULSE:
 			_pulse_counter += 1
@@ -72,7 +73,7 @@ func _execute_internal(_ant: Node, context: Dictionary) -> Dictionary:
 	amount = clampf(amount, 0.0, max_amount)
 	
 	# Energy cost scales with amount
-	var energy_cost = base_energy_cost * (amount / base_amount)
+	var energy_cost: float = base_energy_cost * (amount / base_amount)
 	
 	return {
 		"success": true,

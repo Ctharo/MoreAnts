@@ -11,9 +11,9 @@ var cell_size: float
 var grid: PackedFloat32Array
 var _next_grid: PackedFloat32Array  # Double buffer for diffusion
 
-# Field properties
-var diffusion_rate: float = 0.1
-var evaporation_rate: float = 0.02
+# Field properties - SLOWER evaporation for visible trails
+var diffusion_rate: float = 0.05  # Reduced from 0.1
+var evaporation_rate: float = 0.005  # Reduced from 0.02 - trails last much longer
 var max_concentration: float = 255.0
 
 # Visualization
@@ -29,7 +29,7 @@ func _init(p_name: String, world_width: float, world_height: float, p_cell_size:
 	width = ceili(world_width / cell_size)
 	height = ceili(world_height / cell_size)
 	
-	var size = width * height
+	var size: int = width * height
 	grid = PackedFloat32Array()
 	grid.resize(size)
 	_next_grid = PackedFloat32Array()
@@ -65,59 +65,60 @@ func set_at(x: int, y: int, value: float) -> void:
 
 ## Deposit pheromone at world position
 func deposit(pos: Vector2, amount: float) -> void:
-	var cell = _world_to_grid(pos)
-	var current = get_at(cell.x, cell.y)
+	var cell: Vector2i = _world_to_grid(pos)
+	var current: float = get_at(cell.x, cell.y)
 	set_at(cell.x, cell.y, current + amount)
 
 
 ## Deposit pheromone with spread across multiple cells
 func deposit_spread(pos: Vector2, amount: float, radius: int = 1) -> void:
-	var center = _world_to_grid(pos)
-	var total_cells = (2 * radius + 1) * (2 * radius + 1)
-	var amount_per_cell = amount / total_cells
+	var center: Vector2i = _world_to_grid(pos)
+	var total_cells: int = (2 * radius + 1) * (2 * radius + 1)
+	var amount_per_cell: float = amount / total_cells
 	
-	for dx in range(-radius, radius + 1):
-		for dy in range(-radius, radius + 1):
-			var x = center.x + dx
-			var y = center.y + dy
-			var current = get_at(x, y)
+	for dx: int in range(-radius, radius + 1):
+		for dy: int in range(-radius, radius + 1):
+			var x: int = center.x + dx
+			var y: int = center.y + dy
+			var current: float = get_at(x, y)
 			set_at(x, y, current + amount_per_cell)
 
 
 ## Sample pheromone at world position
 func sample(pos: Vector2) -> float:
-	var cell = _world_to_grid(pos)
+	var cell: Vector2i = _world_to_grid(pos)
 	return get_at(cell.x, cell.y)
 
 
 ## Sample pheromone at antenna positions (left, center, right)
 func sample_antenna(pos: Vector2, heading: float, distance: float, angle: float) -> Dictionary:
-	var left_pos = pos + Vector2(cos(heading - angle), sin(heading - angle)) * distance
-	var center_pos = pos + Vector2(cos(heading), sin(heading)) * distance
-	var right_pos = pos + Vector2(cos(heading + angle), sin(heading + angle)) * distance
+	var left_pos: Vector2 = pos + Vector2(cos(heading - angle), sin(heading - angle)) * distance
+	var center_pos: Vector2 = pos + Vector2(cos(heading), sin(heading)) * distance
+	var right_pos: Vector2 = pos + Vector2(cos(heading + angle), sin(heading + angle)) * distance
 	
 	return {
 		"left": sample(left_pos),
 		"center": sample(center_pos),
 		"right": sample(right_pos),
+		"total": sample(left_pos) + sample(center_pos) + sample(right_pos),
 	}
 
 
 ## Get gradient direction at position (for following pheromone trails)
 func get_gradient(pos: Vector2) -> Vector2:
-	var cell = _world_to_grid(pos)
+	var cell: Vector2i = _world_to_grid(pos)
 	
 	# Sample neighboring cells
-	var left = get_at(cell.x - 1, cell.y)
-	var right = get_at(cell.x + 1, cell.y)
-	var up = get_at(cell.x, cell.y - 1)
-	var down = get_at(cell.x, cell.y + 1)
+	var left: float = get_at(cell.x - 1, cell.y)
+	var right: float = get_at(cell.x + 1, cell.y)
+	var up: float = get_at(cell.x, cell.y - 1)
+	var down: float = get_at(cell.x, cell.y + 1)
 	
 	# Compute gradient
-	var dx = right - left
-	var dy = down - up
+	var dx: float = right - left
+	var dy: float = down - up
 	
-	var gradient = Vector2(dx, dy)
+	var gradient: Vector2 = Vector2(dx, dy)
 	if gradient.length_squared() > 0.001:
 		return gradient.normalized()
 	return Vector2.ZERO
@@ -128,10 +129,10 @@ func update(delta: float) -> void:
 	current_total = 0.0
 	
 	# Apply diffusion and evaporation
-	for y in range(height):
-		for x in range(width):
-			var idx = _grid_to_index(x, y)
-			var current = grid[idx]
+	for y: int in range(height):
+		for x: int in range(width):
+			var idx: int = _grid_to_index(x, y)
+			var current: float = grid[idx]
 			
 			if current < 0.001:
 				_next_grid[idx] = 0.0
@@ -142,8 +143,8 @@ func update(delta: float) -> void:
 			
 			# Diffusion (simple 4-neighbor averaging)
 			if diffusion_rate > 0:
-				var neighbors_sum = 0.0
-				var neighbor_count = 0
+				var neighbors_sum: float = 0.0
+				var neighbor_count: int = 0
 				
 				if x > 0:
 					neighbors_sum += grid[_grid_to_index(x - 1, y)]
@@ -159,14 +160,14 @@ func update(delta: float) -> void:
 					neighbor_count += 1
 				
 				if neighbor_count > 0:
-					var neighbor_avg = neighbors_sum / neighbor_count
+					var neighbor_avg: float = neighbors_sum / neighbor_count
 					current = lerpf(current, neighbor_avg, diffusion_rate * delta)
 			
 			_next_grid[idx] = clampf(current, 0.0, max_concentration)
 			current_total += _next_grid[idx]
 	
 	# Swap buffers
-	var temp = grid
+	var temp: PackedFloat32Array = grid
 	grid = _next_grid
 	_next_grid = temp
 
@@ -182,7 +183,7 @@ func get_stats() -> Dictionary:
 	var max_val: float = 0.0
 	var non_zero_cells: int = 0
 	
-	for i in range(grid.size()):
+	for i: int in range(grid.size()):
 		if grid[i] > 0.001:
 			non_zero_cells += 1
 			max_val = maxf(max_val, grid[i])

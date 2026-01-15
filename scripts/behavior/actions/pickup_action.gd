@@ -32,16 +32,16 @@ func _execute_internal(_ant: Node, context: Dictionary) -> Dictionary:
 	if context.get("carried_item", null) != null:
 		return {"success": false, "energy_cost": 0.0}
 	
-	var target = null
+	var target: Node = null
 	
 	match pickup_target:
 		PickupTarget.NEAREST_FOOD:
-			var dist = context.get("nearest_food_distance", INF)
+			var dist: float = context.get("nearest_food_distance", INF)
 			if dist <= pickup_range:
 				target = context.get("nearest_food", null)
 		PickupTarget.NEAREST_ITEM:
 			# Would need more general item tracking
-			var dist = context.get("nearest_food_distance", INF)
+			var dist: float = context.get("nearest_food_distance", INF)
 			if dist <= pickup_range:
 				target = context.get("nearest_food", null)
 		PickupTarget.SPECIFIC_TYPE:
