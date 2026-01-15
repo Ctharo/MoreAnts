@@ -292,7 +292,7 @@ func _create_default_forager():
 	search_move.move_mode = 9  # WEIGHTED_BLEND
 	search_move.pheromone_name = "food_trail"
 	search_move.blend_weights = {"pheromone": 0.5, "random": 0.4, "nest": 0.1}
-	search_state.tick_actions = [search_move]
+	search_state.tick_actions = [search_move] as Array[BehaviorAction]
 
 	var found_food_trans = BehaviorTransitionScript.new()
 	found_food_trans.target_state = "Harvest"
@@ -311,7 +311,7 @@ func _create_default_forager():
 	low_energy_trans.condition = low_energy
 	low_energy_trans.priority = 5
 
-	search_state.transitions = [found_food_trans, low_energy_trans]
+	search_state.transitions = [found_food_trans, low_energy_trans] as Array[BehaviorTransition]
 
 	# Harvest state
 	var harvest_state = BehaviorStateScript.new()
@@ -326,7 +326,7 @@ func _create_default_forager():
 	pickup.pickup_target = 0  # NEAREST_FOOD
 	pickup.pickup_range = 15.0
 
-	harvest_state.tick_actions = [harvest_move, pickup]
+	harvest_state.tick_actions = [harvest_move, pickup] as Array[BehaviorAction]
 
 	var got_food_trans = BehaviorTransitionScript.new()
 	got_food_trans.target_state = "Return"
@@ -345,7 +345,7 @@ func _create_default_forager():
 	no_food_trans.priority = 5
 	no_food_trans.cooldown_ticks = 10
 
-	harvest_state.transitions = [got_food_trans, no_food_trans]
+	harvest_state.transitions = [got_food_trans, no_food_trans] as Array[BehaviorTransition]
 
 	# Return state
 	var return_state = BehaviorStateScript.new()
@@ -362,7 +362,7 @@ func _create_default_forager():
 	deposit_pheromone.max_amount = 5.0
 	deposit_pheromone.reference_distance = 300.0
 
-	return_state.tick_actions = [return_move, deposit_pheromone]
+	return_state.tick_actions = [return_move, deposit_pheromone] as Array[BehaviorAction]
 
 	var at_nest_trans = BehaviorTransitionScript.new()
 	at_nest_trans.target_state = "Deposit"
@@ -380,7 +380,7 @@ func _create_default_forager():
 	lost_food_trans.condition = not_carrying
 	lost_food_trans.priority = 5
 
-	return_state.transitions = [at_nest_trans, lost_food_trans]
+	return_state.transitions = [at_nest_trans, lost_food_trans] as Array[BehaviorTransition]
 
 	# Deposit state
 	var deposit_state = BehaviorStateScript.new()
@@ -391,7 +391,7 @@ func _create_default_forager():
 	drop.drop_mode = 1  # DROP_AT_NEST
 	drop.nest_threshold = 40.0
 
-	deposit_state.tick_actions = [drop]
+	deposit_state.tick_actions = [drop] as Array[BehaviorAction]
 
 	var deposited_trans = BehaviorTransitionScript.new()
 	deposited_trans.target_state = "Search"
@@ -400,9 +400,9 @@ func _create_default_forager():
 	deposited_trans.condition = empty_hands
 	deposited_trans.priority = 10
 
-	deposit_state.transitions = [deposited_trans]
+	deposit_state.transitions = [deposited_trans] as Array[BehaviorTransition]
 
-	program.states = [search_state, harvest_state, return_state, deposit_state]
+	program.states = [search_state, harvest_state, return_state, deposit_state] as Array[BehaviorState]
 	program.initial_state = "Search"
 
 	return program
