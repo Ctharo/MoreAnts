@@ -21,17 +21,17 @@ extends Resource
 ## Returns Dictionary with results: {success: bool, energy_cost: float, ...}
 func execute(ant: Node, context: Dictionary) -> Dictionary:
 	var result = _execute_internal(ant, context)
-	
+
 	# Ensure required fields exist
 	if not result.has("success"):
 		result["success"] = false
 	if not result.has("energy_cost"):
 		result["energy_cost"] = base_energy_cost
-	
+
 	# Add cost category for tracking (ant will handle actual tracking)
 	result["cost_category"] = _get_cost_category()
 	result["action_name"] = display_name
-	
+
 	return result
 
 
