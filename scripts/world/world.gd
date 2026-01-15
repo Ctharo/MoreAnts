@@ -34,14 +34,14 @@ func _ready() -> void:
 	# Initialize spatial hash
 	var SpatialHashScript = load("res://scripts/world/spatial_hash.gd")
 	spatial_hash = SpatialHashScript.new(spatial_hash_cell_size)
-	
+
 	# Create default pheromone fields
 	for field_name in default_pheromone_types:
 		create_pheromone_field(field_name)
-	
+
 	# Set up pheromone visualization
 	_setup_visualization()
-	
+
 	# Set reference in GameManager
 	GameManager.world = self
 
@@ -49,18 +49,18 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not GameManager.is_running:
 		return
-	
+
 	var scaled_delta = delta * GameManager.time_scale
-	
+
 	# Update spatial hash every frame
 	_rebuild_spatial_hash()
-	
+
 	# Update pheromone fields at physics rate
 	_physics_accumulator += scaled_delta
 	while _physics_accumulator >= _physics_interval:
 		_physics_accumulator -= _physics_interval
 		_update_pheromone_fields(_physics_interval)
-	
+
 	# Update visualization
 	if _show_pheromones:
 		_update_pheromone_visualization()
@@ -68,13 +68,13 @@ func _process(delta: float) -> void:
 
 func _rebuild_spatial_hash() -> void:
 	spatial_hash.clear()
-	
+
 	# Add all ants
 	for colony in colonies:
 		for ant in colony.ants:
 			if ant != null and is_instance_valid(ant):
 				spatial_hash.insert(ant)
-	
+
 	# Add all food sources
 	for food in food_sources:
 		if food != null and is_instance_valid(food):
@@ -90,12 +90,12 @@ func _update_pheromone_fields(delta: float) -> void:
 func create_pheromone_field(field_name: String, diffusion: float = 0.1, evaporation: float = 0.02):
 	if pheromone_fields.has(field_name):
 		return pheromone_fields[field_name]
-	
+
 	var PheromoneFieldScript = load("res://scripts/world/pheromone_field.gd")
 	var field = PheromoneFieldScript.new(field_name, world_width, world_height, pheromone_cell_size)
 	field.diffusion_rate = diffusion
 	field.evaporation_rate = evaporation
-	
+
 	# Set default colors
 	match field_name:
 		"food_trail":
@@ -108,10 +108,10 @@ func create_pheromone_field(field_name: String, diffusion: float = 0.1, evaporat
 			field.diffusion_rate = 0.3   # Alarm spreads faster
 		_:
 			field.color = Color(0.5, 0.5, 0.5, 0.6)
-	
+
 	pheromone_fields[field_name] = field
 	pheromone_field_added.emit(field_name)
-	
+
 	return field
 
 
@@ -154,7 +154,7 @@ func add_food_source(food: Node) -> void:
 		if not food.is_inside_tree():
 			add_child(food)
 		food_source_added.emit(food)
-		
+
 		# Connect to depletion signal if available
 		if food.has_signal("depleted"):
 			food.depleted.connect(_on_food_depleted.bind(food))
@@ -213,7 +213,7 @@ func get_stats() -> Dictionary:
 	var total_pheromone: float = 0.0
 	for field_name in pheromone_fields:
 		total_pheromone += pheromone_fields[field_name].current_total
-	
+
 	return {
 		"world_size": Vector2(world_width, world_height),
 		"pheromone_field_count": pheromone_fields.size(),

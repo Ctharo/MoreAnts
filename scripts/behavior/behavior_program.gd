@@ -65,20 +65,20 @@ func get_initial_state() -> BehaviorState:
 ## Returns: Dictionary with results and potential state change
 func process_tick(ant: Node, context: Dictionary, current_state_name: String) -> Dictionary:
 	total_ticks += 1
-	
+
 	var result: Dictionary = {
 		"energy_cost": 0.0,
 		"new_state": "",
 		"action_results": [],
 	}
-	
+
 	# Execute global actions first
 	for action in global_actions:
 		if action != null:
 			var action_result = action.execute(ant, context)
 			result.action_results.append(action_result)
 			result.energy_cost += action_result.get("energy_cost", 0.0)
-	
+
 	# Get current state
 	var current_state = get_state(current_state_name)
 	if current_state == null:
@@ -87,12 +87,12 @@ func process_tick(ant: Node, context: Dictionary, current_state_name: String) ->
 			push_error("BehaviorProgram has no states!")
 			return result
 		result.new_state = current_state.state_name
-	
+
 	# Execute state tick
 	var tick_result = current_state.tick(ant, context)
 	result.action_results.append_array(tick_result.get("action_results", []))
 	result.energy_cost += tick_result.get("energy_cost", 0.0)
-	
+
 	# Check transitions
 	var next_state_name = current_state.check_transitions(ant, context)
 	if not next_state_name.is_empty() and next_state_name != current_state_name:
@@ -101,16 +101,16 @@ func process_tick(ant: Node, context: Dictionary, current_state_name: String) ->
 			# Exit current state
 			var exit_result = current_state.exit(ant, context)
 			result.energy_cost += exit_result.get("energy_cost", 0.0)
-			
+
 			# Enter new state
 			var enter_result = next_state.enter(ant, context)
 			result.energy_cost += enter_result.get("energy_cost", 0.0)
-			
+
 			result.new_state = next_state_name
 			total_transitions += 1
-	
+
 	total_energy_spent += result.energy_cost
-	
+
 	return result
 
 
@@ -119,7 +119,7 @@ func enter_initial_state(ant: Node, context: Dictionary) -> Dictionary:
 	var initial = get_initial_state()
 	if initial == null:
 		return {"energy_cost": 0.0, "state": ""}
-	
+
 	var result = initial.enter(ant, context)
 	return {
 		"energy_cost": result.get("energy_cost", 0.0),
@@ -133,10 +133,10 @@ func get_efficiency_report() -> Dictionary:
 	for state in states:
 		if state != null:
 			state_stats.append(state.get_efficiency_stats())
-	
+
 	var avg_energy_per_tick = total_energy_spent / max(total_ticks, 1)
 	var food_per_energy = food_collected / max(total_energy_spent, 0.001)
-	
+
 	return {
 		"program_name": program_name,
 		"total_ticks": total_ticks,
@@ -156,7 +156,7 @@ func reset_stats() -> void:
 	total_energy_spent = 0.0
 	total_ticks = 0
 	food_collected = 0.0
-	
+
 	for state in states:
 		if state != null:
 			state.reset_stats()
@@ -170,16 +170,16 @@ func record_food_collected(amount: float) -> void:
 ## Validate the program structure
 func validate() -> Array[String]:
 	var errors: Array[String] = []
-	
+
 	if states.is_empty():
 		errors.append("Program has no states")
 		return errors
-	
+
 	# Check initial state exists
 	if not initial_state.is_empty():
 		if get_state(initial_state) == null:
 			errors.append("Initial state '%s' not found" % initial_state)
-	
+
 	# Check all transition targets exist
 	for state in states:
 		if state == null:
@@ -188,31 +188,31 @@ func validate() -> Array[String]:
 			if transition == null:
 				continue
 			if get_state(transition.target_state) == null:
-				errors.append("State '%s' has transition to unknown state '%s'" % 
+				errors.append("State '%s' has transition to unknown state '%s'" %
 					[state.state_name, transition.target_state])
-	
+
 	# Check for unreachable states
 	var reachable: Dictionary = {}
 	var to_check: Array[String] = []
-	
+
 	var init = get_initial_state()
 	if init != null:
 		to_check.append(init.state_name)
-	
+
 	while not to_check.is_empty():
 		var current_name = to_check.pop_back()
 		if reachable.has(current_name):
 			continue
 		reachable[current_name] = true
-		
+
 		var state = get_state(current_name)
 		if state != null:
 			for transition in state.transitions:
 				if transition != null and not reachable.has(transition.target_state):
 					to_check.append(transition.target_state)
-	
+
 	for state in states:
 		if state != null and not reachable.has(state.state_name):
 			errors.append("State '%s' is unreachable" % state.state_name)
-	
+
 	return errors
