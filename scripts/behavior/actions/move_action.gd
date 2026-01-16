@@ -116,10 +116,10 @@ func _calculate_pheromone_heading(context: Dictionary, follow: bool) -> float:
 			var diff: float = right_weight - left_weight
 			
 			# Proportional steering based on gradient strength
-			turn_amount = diff * sensor_angle * 1.5
+			turn_amount = diff * sensor_angle * 2.0
 			
 			# Add small random component for exploration
-			turn_amount += randf_range(-0.1, 0.1)
+			turn_amount += randf_range(-0.05, 0.05)
 	else:
 		# Turn away from higher concentration
 		if left > right and left > center:
@@ -151,7 +151,7 @@ func _calculate_blended_heading(context: Dictionary) -> float:
 		var samples: Dictionary = context.get("pheromone_" + pheromone_name, {})
 		var pheromone_total: float = samples.get("total", 0.0)
 		if pheromone_total > 1.0:
-			w *= minf(pheromone_total / 5.0, 2.0)  # Up to 2x weight for strong signals
+			w *= minf(pheromone_total / 5.0, 2.5)  # Up to 2.5x weight for strong signals
 		
 		weighted_x += cos(pheromone_heading) * w
 		weighted_y += sin(pheromone_heading) * w

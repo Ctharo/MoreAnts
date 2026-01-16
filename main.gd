@@ -331,49 +331,59 @@ func _create_default_forager() -> BehaviorProgram:
 
 	var program: BehaviorProgram = BehaviorProgramScript.new()
 	program.program_name = "Basic Forager"
-	program.description = "A simple foraging behavior"
+	program.description = "A simple foraging behavior that uses dual pheromone trails"
 
-	# Search state
+	#region Search State - Drop home_trail so others can find way back
 	var search_state: BehaviorState = BehaviorStateScript.new()
 	search_state.state_name = "Search"
 	search_state.display_color = Color.YELLOW
 
 	var search_move: MoveAction = MoveActionScript.new()
-	search_move.move_mode = 9  # WEIGHTED_BLEND
+	search_move.move_mode = MoveAction.MoveMode.WEIGHTED_BLEND
 	search_move.pheromone_name = "food_trail"
-	search_move.blend_weights = {"pheromone": 0.5, "random": 0.4, "nest": 0.1}
-	search_state.tick_actions = [search_move] as Array[BehaviorAction]
+	search_move.blend_weights = {"pheromone": 0.6, "random": 0.3, "nest": -0.1}
+
+	# Drop home_trail while searching so ants can find their way back
+	var search_home_pheromone: PheromoneAction = PheromoneActionScript.new()
+	search_home_pheromone.pheromone_name = "home_trail"
+	search_home_pheromone.deposit_mode = PheromoneAction.DepositMode.INVERSELY_TO_DISTANCE
+	search_home_pheromone.base_amount = 1.5
+	search_home_pheromone.max_amount = 4.0
+	search_home_pheromone.reference_distance = 400.0
+
+	search_state.tick_actions = [search_move, search_home_pheromone] as Array[BehaviorAction]
 
 	var found_food_trans: BehaviorTransition = BehaviorTransitionScript.new()
 	found_food_trans.target_state = "Harvest"
 	var food_nearby: NearbyCondition = NearbyConditionScript.new()
-	food_nearby.entity_type = 0  # FOOD
-	food_nearby.count_mode = 0   # ANY
+	food_nearby.entity_type = NearbyCondition.EntityType.FOOD
+	food_nearby.count_mode = NearbyCondition.CountMode.ANY
 	food_nearby.search_radius = 25.0
 	found_food_trans.condition = food_nearby
 	found_food_trans.priority = 10
 
 	var low_energy_trans: BehaviorTransition = BehaviorTransitionScript.new()
-	low_energy_trans.target_state = "Return"
+	low_energy_trans.target_state = "GoHome"
 	var low_energy: EnergyCondition = EnergyConditionScript.new()
-	low_energy.compare_mode = 1  # BELOW_PERCENT
+	low_energy.compare_mode = EnergyCondition.CompareMode.BELOW_PERCENT
 	low_energy.threshold = 30.0
 	low_energy_trans.condition = low_energy
 	low_energy_trans.priority = 5
 
 	search_state.transitions = [found_food_trans, low_energy_trans] as Array[BehaviorTransition]
+	#endregion
 
-	# Harvest state
+	#region Harvest State
 	var harvest_state: BehaviorState = BehaviorStateScript.new()
 	harvest_state.state_name = "Harvest"
 	harvest_state.display_color = Color.ORANGE
 
 	var harvest_move: MoveAction = MoveActionScript.new()
-	harvest_move.move_mode = 5  # TOWARD_NEAREST_FOOD
+	harvest_move.move_mode = MoveAction.MoveMode.TOWARD_NEAREST_FOOD
 	harvest_move.speed_multiplier = 0.8
 
 	var pickup: PickupAction = PickupActionScript.new()
-	pickup.pickup_target = 0  # NEAREST_FOOD
+	pickup.pickup_target = PickupAction.PickupTarget.NEAREST_FOOD
 	pickup.pickup_range = 15.0
 
 	harvest_state.tick_actions = [harvest_move, pickup] as Array[BehaviorAction]
@@ -381,44 +391,48 @@ func _create_default_forager() -> BehaviorProgram:
 	var got_food_trans: BehaviorTransition = BehaviorTransitionScript.new()
 	got_food_trans.target_state = "Return"
 	var carrying: CarryingCondition = CarryingConditionScript.new()
-	carrying.carry_mode = 0  # CARRYING_ANYTHING
+	carrying.carry_mode = CarryingCondition.CarryMode.CARRYING_ANYTHING
 	got_food_trans.condition = carrying
 	got_food_trans.priority = 10
 
 	var no_food_trans: BehaviorTransition = BehaviorTransitionScript.new()
 	no_food_trans.target_state = "Search"
 	var no_food: NearbyCondition = NearbyConditionScript.new()
-	no_food.entity_type = 0  # FOOD
-	no_food.count_mode = 1   # NONE
+	no_food.entity_type = NearbyCondition.EntityType.FOOD
+	no_food.count_mode = NearbyCondition.CountMode.NONE
 	no_food.search_radius = 50.0
 	no_food_trans.condition = no_food
 	no_food_trans.priority = 5
 	no_food_trans.cooldown_ticks = 10
 
 	harvest_state.transitions = [got_food_trans, no_food_trans] as Array[BehaviorTransition]
+	#endregion
 
-	# Return state
+	#region Return State - Follow home_trail AND drop food_trail
 	var return_state: BehaviorState = BehaviorStateScript.new()
 	return_state.state_name = "Return"
 	return_state.display_color = Color.GREEN
 
 	var return_move: MoveAction = MoveActionScript.new()
-	return_move.move_mode = 2  # TOWARD_NEST
+	return_move.move_mode = MoveAction.MoveMode.WEIGHTED_BLEND
+	return_move.pheromone_name = "home_trail"
+	return_move.blend_weights = {"pheromone": 0.5, "nest": 0.5, "random": 0.0}
 
-	var deposit_pheromone: PheromoneAction = PheromoneActionScript.new()
-	deposit_pheromone.pheromone_name = "food_trail"
-	deposit_pheromone.deposit_mode = 3  # INVERSELY_TO_DISTANCE
-	deposit_pheromone.base_amount = 2.0
-	deposit_pheromone.max_amount = 5.0
-	deposit_pheromone.reference_distance = 300.0
+	# Deposit food_trail so other ants can find the food source
+	var deposit_food_pheromone: PheromoneAction = PheromoneActionScript.new()
+	deposit_food_pheromone.pheromone_name = "food_trail"
+	deposit_food_pheromone.deposit_mode = PheromoneAction.DepositMode.INVERSELY_TO_DISTANCE
+	deposit_food_pheromone.base_amount = 2.0
+	deposit_food_pheromone.max_amount = 6.0
+	deposit_food_pheromone.reference_distance = 300.0
 
-	return_state.tick_actions = [return_move, deposit_pheromone] as Array[BehaviorAction]
+	return_state.tick_actions = [return_move, deposit_food_pheromone] as Array[BehaviorAction]
 
 	var at_nest_trans: BehaviorTransition = BehaviorTransitionScript.new()
 	at_nest_trans.target_state = "Deposit"
 	var at_nest: DistanceCondition = DistanceConditionScript.new()
-	at_nest.target_type = 0  # NEST
-	at_nest.compare_mode = 0  # CLOSER_THAN
+	at_nest.target_type = DistanceCondition.TargetType.NEST
+	at_nest.compare_mode = DistanceCondition.CompareMode.CLOSER_THAN
 	at_nest.threshold = 30.0
 	at_nest_trans.condition = at_nest
 	at_nest_trans.priority = 10
@@ -426,19 +440,20 @@ func _create_default_forager() -> BehaviorProgram:
 	var lost_food_trans: BehaviorTransition = BehaviorTransitionScript.new()
 	lost_food_trans.target_state = "Search"
 	var not_carrying: CarryingCondition = CarryingConditionScript.new()
-	not_carrying.carry_mode = 1  # CARRYING_NOTHING
+	not_carrying.carry_mode = CarryingCondition.CarryMode.CARRYING_NOTHING
 	lost_food_trans.condition = not_carrying
 	lost_food_trans.priority = 5
 
 	return_state.transitions = [at_nest_trans, lost_food_trans] as Array[BehaviorTransition]
+	#endregion
 
-	# Deposit state
+	#region Deposit State
 	var deposit_state: BehaviorState = BehaviorStateScript.new()
 	deposit_state.state_name = "Deposit"
 	deposit_state.display_color = Color.BLUE
 
 	var drop: DropAction = DropActionScript.new()
-	drop.drop_mode = 1  # DROP_AT_NEST
+	drop.drop_mode = DropAction.DropMode.DROP_AT_NEST
 	drop.nest_threshold = 40.0
 
 	deposit_state.tick_actions = [drop] as Array[BehaviorAction]
@@ -446,13 +461,61 @@ func _create_default_forager() -> BehaviorProgram:
 	var deposited_trans: BehaviorTransition = BehaviorTransitionScript.new()
 	deposited_trans.target_state = "Search"
 	var empty_hands: CarryingCondition = CarryingConditionScript.new()
-	empty_hands.carry_mode = 1  # CARRYING_NOTHING
+	empty_hands.carry_mode = CarryingCondition.CarryMode.CARRYING_NOTHING
 	deposited_trans.condition = empty_hands
 	deposited_trans.priority = 10
 
 	deposit_state.transitions = [deposited_trans] as Array[BehaviorTransition]
+	#endregion
 
-	program.states = [search_state, harvest_state, return_state, deposit_state] as Array[BehaviorState]
+	#region GoHome State - For low energy ants to return without food
+	var go_home_state: BehaviorState = BehaviorStateScript.new()
+	go_home_state.state_name = "GoHome"
+	go_home_state.display_color = Color.ORANGE_RED
+
+	var go_home_move: MoveAction = MoveActionScript.new()
+	go_home_move.move_mode = MoveAction.MoveMode.WEIGHTED_BLEND
+	go_home_move.pheromone_name = "home_trail"
+	go_home_move.blend_weights = {"pheromone": 0.4, "nest": 0.6, "random": 0.0}
+
+	go_home_state.tick_actions = [go_home_move] as Array[BehaviorAction]
+
+	var home_reached_trans: BehaviorTransition = BehaviorTransitionScript.new()
+	home_reached_trans.target_state = "Rest"
+	var home_reached: DistanceCondition = DistanceConditionScript.new()
+	home_reached.target_type = DistanceCondition.TargetType.NEST
+	home_reached.compare_mode = DistanceCondition.CompareMode.CLOSER_THAN
+	home_reached.threshold = 40.0
+	home_reached_trans.condition = home_reached
+	home_reached_trans.priority = 10
+
+	go_home_state.transitions = [home_reached_trans] as Array[BehaviorTransition]
+	#endregion
+
+	#region Rest State - Wait at nest until energy restored
+	var rest_state: BehaviorState = BehaviorStateScript.new()
+	rest_state.state_name = "Rest"
+	rest_state.display_color = Color.LIGHT_BLUE
+
+	# No movement while resting
+	var rest_move: MoveAction = MoveActionScript.new()
+	rest_move.move_mode = MoveAction.MoveMode.RANDOM_WALK
+	rest_move.speed_multiplier = 0.0
+
+	rest_state.tick_actions = [rest_move] as Array[BehaviorAction]
+
+	var rested_trans: BehaviorTransition = BehaviorTransitionScript.new()
+	rested_trans.target_state = "Search"
+	var high_energy: EnergyCondition = EnergyConditionScript.new()
+	high_energy.compare_mode = EnergyCondition.CompareMode.ABOVE_PERCENT
+	high_energy.threshold = 80.0
+	rested_trans.condition = high_energy
+	rested_trans.priority = 10
+
+	rest_state.transitions = [rested_trans] as Array[BehaviorTransition]
+	#endregion
+
+	program.states = [search_state, harvest_state, return_state, deposit_state, go_home_state, rest_state] as Array[BehaviorState]
 	program.initial_state = "Search"
 
 	return program

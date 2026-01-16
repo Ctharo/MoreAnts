@@ -103,7 +103,7 @@ func toggle_simulation() -> void:
 
 ## Set time scale (1.0 = normal, 2.0 = 2x speed, etc)
 func set_time_scale(scale: float) -> void:
-	time_scale = clampf(scale, 0.1, 10.0)
+	time_scale = clampf(scale, 0.01, 100.0)
 
 
 ## Get an action cost

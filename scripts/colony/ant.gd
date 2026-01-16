@@ -1,66 +1,84 @@
 class_name Ant
 extends Node2D
 ## Individual ant agent with sensors, steering, and behavior execution
+## Uses tween-based interpolation for smooth visual movement
 
 signal food_delivered(amount: float)
 signal died(cause: String)
 
-# References
+#region References
 var colony: Node = null
 var world: Node = null
+#endregion
 
-# Identity
+#region Identity
 var ant_index: int = 0  # For cohort assignment
+#endregion
 
-# Physical properties
+#region Physical Properties
 @export var base_speed: float = 80.0
-@export var max_turn_rate: float = PI * 3.0  # Radians per second
+@export var max_turn_rate: float = PI * 2.5  # Radians per second
 @export var sensor_distance: float = 40.0
 @export var sensor_angle: float = PI / 6  # 30 degrees
 @export var pickup_range: float = 20.0
 @export var neighbor_sense_range: float = 60.0
+#endregion
 
-# State
+#region State
 var heading: float = 0.0
 var desired_heading: float = 0.0
 var velocity: Vector2 = Vector2.ZERO
 var current_speed: float = 0.0
-var target_speed: float = 0.0  # For smooth speed transitions
+var target_speed: float = 0.0
 var energy: float = 100.0
 var max_energy: float = 100.0
 var carried_item: Node = null
 var carried_weight: float = 0.0
+#endregion
 
-# Path integration (dead reckoning toward nest)
+#region Path Integration
 var path_integrator: Vector2 = Vector2.ZERO
+#endregion
 
-# Memory (user-programmable storage)
+#region Memory
 var memory: Dictionary = {}
+#endregion
 
-# Behavior
-var behavior_program  # BehaviorProgram
+#region Behavior
+var behavior_program: BehaviorProgram = null
 var current_state_name: String = ""
+#endregion
 
-# Efficiency tracking
-var efficiency_tracker  # AntEfficiencyTracker
+#region Efficiency Tracking
+var efficiency_tracker: AntEfficiencyTracker = null
+#endregion
 
-# Cached sensor data (updated each decision tick)
+#region Smooth Movement
+var _target_position: Vector2 = Vector2.ZERO
+var _visual_position: Vector2 = Vector2.ZERO
+var _position_tween: Tween = null
+var _rotation_tween: Tween = null
+var _last_decision_time: float = 0.0
+var _decision_interval: float = 0.1  # 10Hz decision rate
+#endregion
+
+#region Sensor Cache
 var _sensor_cache: Dictionary = {}
+#endregion
 
-# Script references
-var _EfficiencyTrackerScript = null
-
-# World bounds (set during initialize)
+#region World Bounds
 var _world_min: Vector2 = Vector2.ZERO
 var _world_max: Vector2 = Vector2(2000, 2000)
+#endregion
 
 
 func _ready() -> void:
 	add_to_group("ants")
-	_EfficiencyTrackerScript = load("res://scripts/stats/efficiency_tracker.gd")
-	efficiency_tracker = _EfficiencyTrackerScript.new()
+	efficiency_tracker = AntEfficiencyTracker.new()
 	heading = randf() * TAU
 	desired_heading = heading
+	_visual_position = global_position
+	_target_position = global_position
 
 
 func _process(delta: float) -> void:
@@ -69,20 +87,14 @@ func _process(delta: float) -> void:
 	
 	var scaled_delta: float = delta * GameManager.time_scale
 	
-	# Smooth heading interpolation
+	# Smooth heading interpolation (always runs for visual smoothness)
 	_interpolate_heading(scaled_delta)
 	
-	# Smooth speed interpolation
-	_interpolate_speed(scaled_delta)
-	
-	# Movement with boundary enforcement
-	_integrate_movement(scaled_delta)
-	
-	# Update visuals
+	# Update visual rotation
 	rotation = heading
 
 
-func initialize(p_colony: Node, p_world: Node, p_index: int, p_behavior) -> void:
+func initialize(p_colony: Node, p_world: Node, p_index: int, p_behavior: BehaviorProgram) -> void:
 	colony = p_colony
 	world = p_world
 	ant_index = p_index
@@ -99,6 +111,9 @@ func initialize(p_colony: Node, p_world: Node, p_index: int, p_behavior) -> void
 		# Small random offset
 		var offset: Vector2 = Vector2(randf_range(-20, 20), randf_range(-20, 20))
 		global_position += offset
+	
+	_visual_position = global_position
+	_target_position = global_position
 	
 	if behavior_program != null:
 		var init_result: Dictionary = behavior_program.enter_initial_state(self, _build_context())
@@ -134,8 +149,8 @@ func decision_tick() -> void:
 		# Process action results
 		_process_action_results(result.action_results)
 	
-	# Update path integrator
-	_update_path_integrator()
+	# Calculate and apply movement with smooth interpolation
+	_calculate_movement()
 	
 	# Check death from starvation
 	if energy <= 0:
@@ -152,15 +167,71 @@ func _interpolate_heading(delta: float) -> void:
 		heading = fmod(heading + TAU, TAU)
 
 
-func _interpolate_speed(delta: float) -> void:
-	## Smoothly interpolate current speed toward target speed
-	var speed_diff: float = target_speed - current_speed
-	var max_accel: float = 200.0 * delta  # Acceleration rate
+func _calculate_movement() -> void:
+	## Calculate the next target position based on current heading and speed
+	var move_distance: float = current_speed * _decision_interval
+	var move_direction: Vector2 = Vector2(cos(heading), sin(heading))
+	var new_target: Vector2 = global_position + move_direction * move_distance
 	
-	if absf(speed_diff) > 1.0:
-		current_speed += clampf(speed_diff, -max_accel, max_accel)
-	else:
-		current_speed = target_speed
+	# Enforce world boundaries with bounce
+	var bounced: bool = false
+	if new_target.x < _world_min.x:
+		new_target.x = _world_min.x
+		heading = PI - heading
+		bounced = true
+	elif new_target.x > _world_max.x:
+		new_target.x = _world_max.x
+		heading = PI - heading
+		bounced = true
+	
+	if new_target.y < _world_min.y:
+		new_target.y = _world_min.y
+		heading = -heading
+		bounced = true
+	elif new_target.y > _world_max.y:
+		new_target.y = _world_max.y
+		heading = -heading
+		bounced = true
+	
+	if bounced:
+		heading = fmod(heading + TAU, TAU)
+		desired_heading = heading
+	
+	# Track distance traveled
+	var actual_distance: float = global_position.distance_to(new_target)
+	if actual_distance > 0.1:
+		efficiency_tracker.record_distance(actual_distance)
+		
+		# Movement energy cost
+		var move_cost: float = actual_distance * GameManager.get_action_cost("move_base")
+		if carried_item != null:
+			move_cost = actual_distance * GameManager.get_action_cost("move_carrying")
+		_apply_energy_cost(move_cost)
+	
+	# Start smooth tween to new position
+	_tween_to_position(new_target)
+	
+	# Update path integrator
+	if colony != null:
+		path_integrator = colony.nest_position - new_target
+
+
+func _tween_to_position(target: Vector2) -> void:
+	## Smoothly tween the ant to the target position
+	_target_position = target
+	
+	# Kill any existing position tween
+	if _position_tween != null and _position_tween.is_valid():
+		_position_tween.kill()
+	
+	# Calculate tween duration based on decision interval and time scale
+	var tween_duration: float = _decision_interval / maxf(GameManager.time_scale, 0.1)
+	
+	# Create smooth position tween
+	_position_tween = create_tween()
+	_position_tween.set_ease(Tween.EASE_OUT)
+	_position_tween.set_trans(Tween.TRANS_SINE)
+	_position_tween.tween_property(self, "global_position", target, tween_duration)
 
 
 func _update_sensors() -> void:
@@ -170,7 +241,7 @@ func _update_sensors() -> void:
 	if world != null and world.has_method("get_pheromone_fields"):
 		var fields: Dictionary = world.get_pheromone_fields()
 		for field_name: String in fields:
-			var field = fields[field_name]
+			var field: PheromoneField = fields[field_name]
 			var samples: Dictionary = field.sample_antenna(global_position, heading, sensor_distance, sensor_angle)
 			_sensor_cache["pheromone_" + field_name] = samples
 	
@@ -183,7 +254,7 @@ func _update_sensors() -> void:
 	
 	# Nearby entities (using spatial hash)
 	if world != null and world.has_method("get_spatial_hash"):
-		var spatial_hash = world.get_spatial_hash()
+		var spatial_hash: SpatialHash = world.get_spatial_hash()
 		if spatial_hash != null:
 			# Nearby food
 			var nearby_food: Array = spatial_hash.query_radius_group(global_position, neighbor_sense_range, "food", self)
@@ -276,6 +347,7 @@ func _process_action_results(results: Array) -> void:
 		
 		if result.has("desired_speed"):
 			target_speed = result.desired_speed
+			current_speed = target_speed  # Apply speed immediately
 		
 		# Handle pheromone deposition
 		if result.has("deposit_pheromone") and world != null:
@@ -342,59 +414,6 @@ func _process_action_results(results: Array) -> void:
 			memory.clear()
 
 
-func _integrate_movement(delta: float) -> void:
-	var old_pos: Vector2 = global_position
-	
-	# Update velocity based on current heading and speed
-	velocity = Vector2(cos(heading), sin(heading)) * current_speed
-	
-	# Apply movement
-	global_position += velocity * delta
-	
-	# Enforce world boundaries with bounce
-	var bounced: bool = false
-	if global_position.x < _world_min.x:
-		global_position.x = _world_min.x
-		heading = PI - heading  # Reflect horizontally
-		bounced = true
-	elif global_position.x > _world_max.x:
-		global_position.x = _world_max.x
-		heading = PI - heading
-		bounced = true
-	
-	if global_position.y < _world_min.y:
-		global_position.y = _world_min.y
-		heading = -heading  # Reflect vertically
-		bounced = true
-	elif global_position.y > _world_max.y:
-		global_position.y = _world_max.y
-		heading = -heading
-		bounced = true
-	
-	if bounced:
-		heading = fmod(heading + TAU, TAU)
-		desired_heading = heading
-	
-	# Track distance
-	var distance: float = global_position.distance_to(old_pos)
-	efficiency_tracker.record_distance(distance)
-	
-	# Movement energy cost
-	var move_cost: float = distance * GameManager.get_action_cost("move_base")
-	if carried_item != null:
-		move_cost = distance * GameManager.get_action_cost("move_carrying")
-	_apply_energy_cost(move_cost)
-	
-	# Update path integrator
-	if colony != null:
-		path_integrator = colony.nest_position - global_position
-
-
-func _update_path_integrator() -> void:
-	# Path integration is updated in _integrate_movement
-	pass
-
-
 func _apply_energy_cost(cost: float) -> void:
 	energy -= cost
 	efficiency_tracker.record_energy(cost)
@@ -415,6 +434,12 @@ func _find_nearest(entities: Array) -> Node:
 
 
 func _die(cause: String) -> void:
+	# Kill any running tweens
+	if _position_tween != null and _position_tween.is_valid():
+		_position_tween.kill()
+	if _rotation_tween != null and _rotation_tween.is_valid():
+		_rotation_tween.kill()
+	
 	died.emit(cause)
 	GameManager.global_stats.ants_starved += 1
 	
@@ -442,3 +467,7 @@ func stop_movement() -> void:
 	velocity = Vector2.ZERO
 	current_speed = 0.0
 	target_speed = 0.0
+	
+	# Kill position tween
+	if _position_tween != null and _position_tween.is_valid():
+		_position_tween.kill()
