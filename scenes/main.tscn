@@ -1,70 +1,70 @@
-[gd_scene load_steps=4 format=3 uid="uid://b8d0sl0jawxlt"]
+[gd_scene format=3 uid="uid://b8d0sl0jawxlt"]
 
-[ext_resource type="Script" path="res://main.gd" id="1_main"]
-[ext_resource type="Script" path="res://scripts/world/world.gd" id="2_world"]
-[ext_resource type="Script" path="res://scripts/colony/colony.gd" id="3_colony"]
+[ext_resource type="Script" uid="uid://d3lx7qeco2bth" path="res://main.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://c18bsxisa7on1" path="res://scripts/world/world.gd" id="2_world"]
+[ext_resource type="Script" uid="uid://bd2xlq5nrnbhi" path="res://scripts/colony/colony.gd" id="3_colony"]
 
-[node name="Main" type="Node2D"]
+[node name="Main" type="Node2D" unique_id=282273254]
 script = ExtResource("1_main")
 
-[node name="Camera2D" type="Camera2D" parent="."]
+[node name="Camera2D" type="Camera2D" parent="." unique_id=510739705]
 position = Vector2(1000, 1000)
 zoom = Vector2(0.5, 0.5)
 
-[node name="World" type="Node2D" parent="."]
+[node name="World" type="Node2D" parent="." unique_id=1249527868]
 script = ExtResource("2_world")
 
-[node name="Colony" type="Node2D" parent="World"]
+[node name="Colony" type="Node2D" parent="World" unique_id=1945856630]
 script = ExtResource("3_colony")
 
-[node name="UI" type="CanvasLayer" parent="."]
+[node name="UI" type="CanvasLayer" parent="." unique_id=1444691376]
 
-[node name="StatsPanel" type="PanelContainer" parent="UI"]
+[node name="StatsPanel" type="PanelContainer" parent="UI" unique_id=1558046223]
 offset_right = 250.0
 offset_bottom = 300.0
 
-[node name="VBox" type="VBoxContainer" parent="UI/StatsPanel"]
+[node name="VBox" type="VBoxContainer" parent="UI/StatsPanel" unique_id=293454780]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="UI/StatsPanel/VBox"]
+[node name="Title" type="Label" parent="UI/StatsPanel/VBox" unique_id=232997464]
 layout_mode = 2
 text = "Ant Colony Simulator"
 horizontal_alignment = 1
 
-[node name="HSeparator" type="HSeparator" parent="UI/StatsPanel/VBox"]
+[node name="HSeparator" type="HSeparator" parent="UI/StatsPanel/VBox" unique_id=1471147669]
 layout_mode = 2
 
-[node name="AntCount" type="Label" parent="UI/StatsPanel/VBox"]
+[node name="AntCount" type="Label" parent="UI/StatsPanel/VBox" unique_id=640519186]
 layout_mode = 2
 text = "Ants: 0 / 100"
 
-[node name="FoodStored" type="Label" parent="UI/StatsPanel/VBox"]
+[node name="FoodStored" type="Label" parent="UI/StatsPanel/VBox" unique_id=1535411140]
 layout_mode = 2
 text = "Food Stored: 0"
 
-[node name="FoodCollected" type="Label" parent="UI/StatsPanel/VBox"]
+[node name="FoodCollected" type="Label" parent="UI/StatsPanel/VBox" unique_id=349986494]
 layout_mode = 2
 text = "Total Collected: 0"
 
-[node name="Efficiency" type="Label" parent="UI/StatsPanel/VBox"]
+[node name="Efficiency" type="Label" parent="UI/StatsPanel/VBox" unique_id=497626274]
 layout_mode = 2
 text = "Efficiency: 0.00 food/s"
 
-[node name="SimTime" type="Label" parent="UI/StatsPanel/VBox"]
+[node name="SimTime" type="Label" parent="UI/StatsPanel/VBox" unique_id=1490433237]
 layout_mode = 2
 text = "Time: 0.0s"
 
-[node name="HSeparator2" type="HSeparator" parent="UI/StatsPanel/VBox"]
+[node name="HSeparator2" type="HSeparator" parent="UI/StatsPanel/VBox" unique_id=1109998031]
 layout_mode = 2
 
-[node name="Controls" type="HBoxContainer" parent="UI/StatsPanel/VBox"]
+[node name="Controls" type="HBoxContainer" parent="UI/StatsPanel/VBox" unique_id=657775274]
 layout_mode = 2
 
-[node name="PlayPause" type="Button" parent="UI/StatsPanel/VBox/Controls"]
+[node name="PlayPause" type="Button" parent="UI/StatsPanel/VBox/Controls" unique_id=1246558592]
 layout_mode = 2
 text = "Pause"
 
-[node name="SpeedSlider" type="HSlider" parent="UI/StatsPanel/VBox/Controls"]
+[node name="SpeedSlider" type="HSlider" parent="UI/StatsPanel/VBox/Controls" unique_id=398579526]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = 0.1
@@ -72,15 +72,15 @@ max_value = 5.0
 step = 0.1
 value = 1.0
 
-[node name="SpawnFood" type="Button" parent="UI/StatsPanel/VBox"]
+[node name="SpawnFood" type="Button" parent="UI/StatsPanel/VBox" unique_id=507422866]
 layout_mode = 2
 text = "Spawn Food (F)"
 
-[node name="ToggleEfficiency" type="Button" parent="UI/StatsPanel/VBox"]
+[node name="ToggleEfficiency" type="Button" parent="UI/StatsPanel/VBox" unique_id=1123286276]
 layout_mode = 2
 text = "Show Efficiency Panel (E)"
 
-[node name="CostPanel" type="PanelContainer" parent="UI"]
+[node name="CostPanel" type="PanelContainer" parent="UI" unique_id=2054933258]
 visible = false
 anchors_preset = 1
 anchor_left = 1.0
@@ -89,76 +89,76 @@ offset_left = -300.0
 offset_bottom = 400.0
 grow_horizontal = 0
 
-[node name="VBox" type="VBoxContainer" parent="UI/CostPanel"]
+[node name="VBox" type="VBoxContainer" parent="UI/CostPanel" unique_id=1324321784]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="UI/CostPanel/VBox"]
+[node name="Title" type="Label" parent="UI/CostPanel/VBox" unique_id=1667307163]
 layout_mode = 2
 text = "Efficiency Analysis"
 horizontal_alignment = 1
 
-[node name="HSeparator" type="HSeparator" parent="UI/CostPanel/VBox"]
+[node name="HSeparator" type="HSeparator" parent="UI/CostPanel/VBox" unique_id=1030859139]
 layout_mode = 2
 
-[node name="EfficiencyHeader" type="HBoxContainer" parent="UI/CostPanel/VBox"]
+[node name="EfficiencyHeader" type="HBoxContainer" parent="UI/CostPanel/VBox" unique_id=881528049]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="UI/CostPanel/VBox/EfficiencyHeader"]
+[node name="Label" type="Label" parent="UI/CostPanel/VBox/EfficiencyHeader" unique_id=870607701]
 layout_mode = 2
 text = "Global Efficiency:"
 
-[node name="Value" type="Label" parent="UI/CostPanel/VBox/EfficiencyHeader"]
+[node name="Value" type="Label" parent="UI/CostPanel/VBox/EfficiencyHeader" unique_id=2048595846]
 layout_mode = 2
 text = "0.00"
 
-[node name="FoodPerEnergy" type="HBoxContainer" parent="UI/CostPanel/VBox"]
+[node name="FoodPerEnergy" type="HBoxContainer" parent="UI/CostPanel/VBox" unique_id=815998508]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="UI/CostPanel/VBox/FoodPerEnergy"]
+[node name="Label" type="Label" parent="UI/CostPanel/VBox/FoodPerEnergy" unique_id=1024182373]
 layout_mode = 2
 text = "Food/Energy:"
 
-[node name="Value" type="Label" parent="UI/CostPanel/VBox/FoodPerEnergy"]
+[node name="Value" type="Label" parent="UI/CostPanel/VBox/FoodPerEnergy" unique_id=1448494058]
 layout_mode = 2
 text = "0.0000"
 
-[node name="HSeparator2" type="HSeparator" parent="UI/CostPanel/VBox"]
+[node name="HSeparator2" type="HSeparator" parent="UI/CostPanel/VBox" unique_id=1357299650]
 layout_mode = 2
 
-[node name="CategoriesLabel" type="Label" parent="UI/CostPanel/VBox"]
+[node name="CategoriesLabel" type="Label" parent="UI/CostPanel/VBox" unique_id=182816989]
 layout_mode = 2
 text = "Cost by Category:"
 
-[node name="ScrollContainer" type="ScrollContainer" parent="UI/CostPanel/VBox"]
-layout_mode = 2
+[node name="ScrollContainer" type="ScrollContainer" parent="UI/CostPanel/VBox" unique_id=1007284029]
 custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
 
-[node name="CategoryList" type="VBoxContainer" parent="UI/CostPanel/VBox/ScrollContainer"]
+[node name="CategoryList" type="VBoxContainer" parent="UI/CostPanel/VBox/ScrollContainer" unique_id=1776393623]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="HSeparator3" type="HSeparator" parent="UI/CostPanel/VBox"]
+[node name="HSeparator3" type="HSeparator" parent="UI/CostPanel/VBox" unique_id=1997090044]
 layout_mode = 2
 
-[node name="TopCosts" type="VBoxContainer" parent="UI/CostPanel/VBox"]
+[node name="TopCosts" type="VBoxContainer" parent="UI/CostPanel/VBox" unique_id=1316013126]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="UI/CostPanel/VBox/TopCosts"]
+[node name="Label" type="Label" parent="UI/CostPanel/VBox/TopCosts" unique_id=1279083481]
 layout_mode = 2
 text = "Top Costs:"
 
-[node name="List" type="VBoxContainer" parent="UI/CostPanel/VBox/TopCosts"]
+[node name="List" type="VBoxContainer" parent="UI/CostPanel/VBox/TopCosts" unique_id=109409226]
 layout_mode = 2
 
-[node name="HSeparator4" type="HSeparator" parent="UI/CostPanel/VBox"]
+[node name="HSeparator4" type="HSeparator" parent="UI/CostPanel/VBox" unique_id=1288047163]
 layout_mode = 2
 
-[node name="BehaviorBreakdown" type="VBoxContainer" parent="UI/CostPanel/VBox"]
+[node name="BehaviorBreakdown" type="VBoxContainer" parent="UI/CostPanel/VBox" unique_id=1449816030]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="UI/CostPanel/VBox/BehaviorBreakdown"]
+[node name="Label" type="Label" parent="UI/CostPanel/VBox/BehaviorBreakdown" unique_id=1011056078]
 layout_mode = 2
 text = "Behavior Programs:"
 
-[node name="List" type="VBoxContainer" parent="UI/CostPanel/VBox/BehaviorBreakdown"]
+[node name="List" type="VBoxContainer" parent="UI/CostPanel/VBox/BehaviorBreakdown" unique_id=75771696]
 layout_mode = 2

@@ -1,0 +1,9 @@
+[gd_scene format=3 uid="uid://jstm3ey4pcrt"]
+
+[ext_resource type="Script" path="res://scripts/game_entry.gd" id="1_entry"]
+[ext_resource type="PackedScene" uid="uid://cset7ingsscr33n" path="res://scenes/settings_screen.tscn" id="2_settings"]
+
+[node name="GameEntry" type="Node"]
+script = ExtResource("1_entry")
+
+[node name="SettingsScreen" parent="." instance=ExtResource("2_settings")]

@@ -15,11 +15,12 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Ant Colony Simulator"
-run/main_scene="res://scenes/main.tscn"
+run/main_scene="res://scenes/game_entry.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 
 [autoload]
 
+SettingsManager="*res://scripts/autoloads/settings_manager.gd"
 GameManager="*res://scripts/autoloads/game_manager.gd"
 CostTracker="*res://scripts/autoloads/cost_tracker.gd"
 
