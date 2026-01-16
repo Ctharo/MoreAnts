@@ -28,6 +28,10 @@ func clear() -> void:
 func insert(entity: Node) -> void:
 	if entity == null or not is_instance_valid(entity):
 		return
+	if entity.is_queued_for_deletion():
+		return
+	if not entity.is_inside_tree():
+		return
 	
 	var cell: Vector2i = _get_cell(entity.global_position)
 	
@@ -67,7 +71,7 @@ func query_radius(pos: Vector2, radius: float, exclude: Node = null) -> Array:
 			for entity: Node in _grid[cell]:
 				if entity == exclude:
 					continue
-				if not is_instance_valid(entity):
+				if not _is_entity_valid(entity):
 					continue
 				
 				var dist_sq: float = pos.distance_squared_to(entity.global_position)
@@ -77,13 +81,26 @@ func query_radius(pos: Vector2, radius: float, exclude: Node = null) -> Array:
 	return results
 
 
+## Safely check if an entity is valid for querying
+func _is_entity_valid(entity: Node) -> bool:
+	if entity == null:
+		return false
+	if not is_instance_valid(entity):
+		return false
+	if entity.is_queued_for_deletion():
+		return false
+	if not entity.is_inside_tree():
+		return false
+	return true
+
+
 ## Query entities within radius that belong to a specific group
 func query_radius_group(pos: Vector2, radius: float, group_name: String, exclude: Node = null) -> Array:
 	var all_nearby: Array = query_radius(pos, radius, exclude)
 	var results: Array = []
 	
 	for entity: Node in all_nearby:
-		if entity.is_in_group(group_name):
+		if _is_entity_valid(entity) and entity.is_in_group(group_name):
 			results.append(entity)
 	
 	return results
@@ -100,6 +117,8 @@ func query_nearest(pos: Vector2, radius: float, exclude: Node = null) -> Node:
 	var nearest_dist_sq: float = INF
 	
 	for entity: Node in nearby:
+		if not _is_entity_valid(entity):
+			continue
 		var dist_sq: float = pos.distance_squared_to(entity.global_position)
 		if dist_sq < nearest_dist_sq:
 			nearest_dist_sq = dist_sq
@@ -119,6 +138,8 @@ func query_nearest_group(pos: Vector2, radius: float, group_name: String, exclud
 	var nearest_dist_sq: float = INF
 	
 	for entity: Node in nearby:
+		if not _is_entity_valid(entity):
+			continue
 		var dist_sq: float = pos.distance_squared_to(entity.global_position)
 		if dist_sq < nearest_dist_sq:
 			nearest_dist_sq = dist_sq

@@ -12,7 +12,7 @@ var grid: PackedFloat32Array
 var _next_grid: PackedFloat32Array  # Double buffer for diffusion
 
 # Field properties - SLOWER evaporation for visible trails
-var diffusion_rate: float = 0.05  # Reduced from 0.1
+var diffusion_rate: float = 0.1  # Reduced from 0.1
 var evaporation_rate: float = 0.005  # Reduced from 0.02 - trails last much longer
 var max_concentration: float = 255.0
 

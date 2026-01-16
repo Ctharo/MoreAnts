@@ -17,7 +17,7 @@ enum DropMode {
 
 func _init() -> void:
 	display_name = "Drop"
-	base_energy_cost = 0.2
+	base_energy_cost = 0.0
 
 
 func _get_cost_category() -> String:

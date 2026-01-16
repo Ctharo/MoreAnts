@@ -31,7 +31,7 @@ var _physics_interval: float = 1.0 / 30.0  # 30 Hz
 
 func _ready() -> void:
 	# Initialize spatial hash
-	var SpatialHashScript = load("res://scripts/world/spatial_hash.gd")
+	var SpatialHashScript: Script = load("res://scripts/world/spatial_hash.gd")
 	spatial_hash = SpatialHashScript.new(spatial_hash_cell_size)
 
 	# Create default pheromone fields
@@ -65,14 +65,21 @@ func _process(delta: float) -> void:
 func _rebuild_spatial_hash() -> void:
 	spatial_hash.clear()
 
+	# Clean up invalid colonies first
+	var c: int = colonies.size() - 1
+	while c >= 0:
+		if colonies[c] == null or not is_instance_valid(colonies[c]):
+			colonies.remove_at(c)
+		c -= 1
+
 	# Add all ants (iterate backwards to safely remove invalid entries)
 	for colony: Node in colonies:
-		if colony == null or not is_instance_valid(colony):
+		if not _is_valid_node(colony):
 			continue
 		var i: int = colony.ants.size() - 1
 		while i >= 0:
 			var ant: Node = colony.ants[i]
-			if ant == null or not is_instance_valid(ant):
+			if not _is_valid_node(ant):
 				colony.ants.remove_at(i)
 			else:
 				spatial_hash.insert(ant)
@@ -82,11 +89,33 @@ func _rebuild_spatial_hash() -> void:
 	var j: int = food_sources.size() - 1
 	while j >= 0:
 		var food: Node = food_sources[j]
-		if food == null or not is_instance_valid(food):
+		if not _is_valid_node(food):
 			food_sources.remove_at(j)
-		elif not food.is_picked_up:
+		elif _is_food_available(food):
 			spatial_hash.insert(food)
 		j -= 1
+
+
+## Safely check if a node is valid and not queued for deletion
+func _is_valid_node(node: Node) -> bool:
+	if node == null:
+		return false
+	if not is_instance_valid(node):
+		return false
+	if node.is_queued_for_deletion():
+		return false
+	return true
+
+
+## Safely check if food is available for spatial hash
+func _is_food_available(food: Node) -> bool:
+	if not _is_valid_node(food):
+		return false
+	if not food.is_inside_tree():
+		return false
+	# Use get() to safely access property
+	var picked_up: bool = food.get("is_picked_up") if "is_picked_up" in food else true
+	return not picked_up
 
 
 func _update_pheromone_fields(delta: float) -> void:
@@ -99,7 +128,7 @@ func create_pheromone_field(field_name: String, diffusion: float = 0.05, evapora
 	if pheromone_fields.has(field_name):
 		return pheromone_fields[field_name]
 
-	var PheromoneFieldScript = load("res://scripts/world/pheromone_field.gd")
+	var PheromoneFieldScript: Script = load("res://scripts/world/pheromone_field.gd")
 	var field: PheromoneField = PheromoneFieldScript.new(field_name, world_width, world_height, pheromone_cell_size)
 	field.diffusion_rate = diffusion
 	field.evaporation_rate = evaporation
@@ -175,7 +204,7 @@ func _on_food_depleted(food: Node) -> void:
 
 ## Create a food source at a position
 func spawn_food_source(pos: Vector2, amount: float = 100.0) -> Node:
-	var FoodSourceScript = load("res://scripts/entities/food_source.gd")
+	var FoodSourceScript: Script = load("res://scripts/entities/food_source.gd")
 	var food: Node = FoodSourceScript.new()
 	food.global_position = pos
 	food.food_amount = amount
