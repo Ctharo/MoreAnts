@@ -80,6 +80,10 @@ text = "Spawn Food (F)"
 layout_mode = 2
 text = "Show Efficiency Panel (E)"
 
+[node name="BackToSettings" type="Button" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+text = "Back to Settings (Esc)"
+
 [node name="CostPanel" type="PanelContainer" parent="UI" unique_id=2054933258]
 visible = false
 anchors_preset = 1

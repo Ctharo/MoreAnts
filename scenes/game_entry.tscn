@@ -1,9 +1,9 @@
 [gd_scene format=3 uid="uid://jstm3ey4pcrt"]
 
-[ext_resource type="Script" path="res://scripts/game_entry.gd" id="1_entry"]
-[ext_resource type="PackedScene" uid="uid://cset7ingsscr33n" path="res://scenes/settings_screen.tscn" id="2_settings"]
+[ext_resource type="Script" uid="uid://bd50gkpouqbmy" path="res://scripts/game_entry.gd" id="1_entry"]
+[ext_resource type="PackedScene" uid="uid://c3eo3py3spkgr" path="res://scenes/settings_screen.tscn" id="2_settings"]
 
-[node name="GameEntry" type="Node"]
+[node name="GameEntry" type="Node" unique_id=1970507908]
 script = ExtResource("1_entry")
 
-[node name="SettingsScreen" parent="." instance=ExtResource("2_settings")]
+[node name="SettingsScreen" parent="." unique_id=66803434 instance=ExtResource("2_settings")]
