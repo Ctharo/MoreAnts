@@ -19,6 +19,7 @@ var pheromone_fields: Dictionary = {}  # String -> PheromoneField
 var spatial_hash: SpatialHash = null
 var colonies: Array = []
 var food_sources: Array = []
+var obstacles: Array = []  # Obstacle nodes
 #endregion
 
 #region Visualization
@@ -70,32 +71,40 @@ func _rebuild_spatial_hash() -> void:
 	# Clean up invalid colonies first
 	var c: int = colonies.size() - 1
 	while c >= 0:
-		if colonies[c] == null or not is_instance_valid(colonies[c]):
+		if not is_instance_valid(colonies[c]):
 			colonies.remove_at(c)
 		c -= 1
 
 	# Add all ants (iterate backwards to safely remove invalid entries)
 	for colony: Node in colonies:
-		if not _is_valid_node(colony):
+		if not is_instance_valid(colony):
 			continue
 		var i: int = colony.ants.size() - 1
 		while i >= 0:
-			var ant: Node = colony.ants[i]
-			if not _is_valid_node(ant):
+			if not is_instance_valid(colony.ants[i]):
 				colony.ants.remove_at(i)
 			else:
-				spatial_hash.insert(ant)
+				spatial_hash.insert(colony.ants[i])
 			i -= 1
 
 	# Add all food sources (clean up freed ones)
+	# Must check is_instance_valid BEFORE accessing the element
 	var j: int = food_sources.size() - 1
 	while j >= 0:
-		var food: Node = food_sources[j]
-		if not _is_valid_node(food):
+		if not is_instance_valid(food_sources[j]):
 			food_sources.remove_at(j)
-		elif _is_food_available(food):
-			spatial_hash.insert(food)
+		elif _is_food_available(food_sources[j]):
+			spatial_hash.insert(food_sources[j])
 		j -= 1
+	
+	# Add all obstacles
+	var k: int = obstacles.size() - 1
+	while k >= 0:
+		if not is_instance_valid(obstacles[k]):
+			obstacles.remove_at(k)
+		else:
+			spatial_hash.insert(obstacles[k])
+		k -= 1
 
 
 ## Safely check if a node is valid and not queued for deletion
@@ -227,6 +236,119 @@ func spawn_food_cluster(center: Vector2, count: int, radius: float, total_food: 
 		spawn_food_source(pos, food_per_source)
 
 
+#region Obstacle Management
+## Add an obstacle to the world
+func add_obstacle(obstacle: Node) -> void:
+	if obstacle not in obstacles:
+		obstacles.append(obstacle)
+		obstacle.add_to_group("obstacles")
+		if not obstacle.is_inside_tree():
+			add_child(obstacle)
+
+
+## Create and add a circular obstacle
+func spawn_obstacle_circle(pos: Vector2, radius: float) -> Node:
+	var ObstacleScript: Script = load("res://scripts/entities/obstacle.gd")
+	var obstacle: Node = ObstacleScript.new()
+	obstacle.global_position = pos
+	obstacle.obstacle_radius = radius
+	obstacle.shape_type = 0  # CIRCLE
+	add_obstacle(obstacle)
+	return obstacle
+
+
+## Create and add a rectangular obstacle
+func spawn_obstacle_rect(pos: Vector2, size: Vector2, rotation_deg: float = 0.0) -> Node:
+	var ObstacleScript: Script = load("res://scripts/entities/obstacle.gd")
+	var obstacle: Node = ObstacleScript.new()
+	obstacle.global_position = pos
+	obstacle.obstacle_size = size
+	obstacle.shape_type = 1  # RECTANGLE
+	obstacle.rotation_degrees = rotation_deg
+	add_obstacle(obstacle)
+	return obstacle
+
+
+## Create a wall (thin rectangle)
+func spawn_wall(start: Vector2, end: Vector2, thickness: float = 10.0) -> Node:
+	var center: Vector2 = (start + end) / 2.0
+	var length: float = start.distance_to(end)
+	var angle: float = (end - start).angle()
+	
+	var ObstacleScript: Script = load("res://scripts/entities/obstacle.gd")
+	var obstacle: Node = ObstacleScript.new()
+	obstacle.global_position = center
+	obstacle.obstacle_size = Vector2(length, thickness)
+	obstacle.shape_type = 1  # RECTANGLE
+	obstacle.rotation = angle
+	add_obstacle(obstacle)
+	return obstacle
+
+
+## Remove an obstacle
+func remove_obstacle(obstacle: Node) -> void:
+	obstacles.erase(obstacle)
+	if is_instance_valid(obstacle):
+		obstacle.queue_free()
+
+
+## Query obstacles near a position (for ant sensing)
+func query_obstacles_near(pos: Vector2, radius: float) -> Array:
+	return spatial_hash.query_radius_group(pos, radius, "obstacles")
+
+
+## Check if a point is inside any obstacle
+func is_point_blocked(pos: Vector2) -> bool:
+	var nearby: Array = query_obstacles_near(pos, 100.0)  # Check nearby obstacles
+	for obs: Node in nearby:
+		if not is_instance_valid(obs):
+			continue
+		if obs.has_method("contains_point") and obs.contains_point(pos):
+			return true
+	return false
+
+
+## Get the nearest obstacle surface point and normal for avoidance
+func get_obstacle_avoidance(pos: Vector2, heading: float, sense_distance: float) -> Dictionary:
+	## Returns {blocked: bool, avoidance_heading: float, distance: float}
+	var result: Dictionary = {
+		"blocked": false,
+		"avoidance_heading": heading,
+		"distance": INF,
+	}
+	
+	# Sample points ahead in a cone
+	var sample_angles: Array[float] = [0.0, -0.3, 0.3, -0.6, 0.6]  # Center, left, right
+	var nearest_block_dist: float = INF
+	var block_direction: float = 0.0
+	
+	for angle_offset: float in sample_angles:
+		var sample_angle: float = heading + angle_offset
+		var sample_pos: Vector2 = pos + Vector2.from_angle(sample_angle) * sense_distance
+		
+		var nearby: Array = query_obstacles_near(sample_pos, 20.0)
+		for obs: Node in nearby:
+			if not is_instance_valid(obs):
+				continue
+			if obs.has_method("get_distance_to_surface"):
+				var dist: float = obs.get_distance_to_surface(pos)
+				if dist < nearest_block_dist:
+					nearest_block_dist = dist
+					block_direction = angle_offset
+					result.blocked = true
+					result.distance = dist
+	
+	if result.blocked:
+		# Steer away from the blocked direction
+		if block_direction <= 0:
+			result.avoidance_heading = heading + PI / 3  # Turn right
+		else:
+			result.avoidance_heading = heading - PI / 3  # Turn left
+	
+	return result
+#endregion
+
+
 func _draw() -> void:
 	# Draw world bounds
 	draw_rect(Rect2(0, 0, world_width, world_height), Color(0.2, 0.2, 0.2), false, 2.0)
@@ -277,4 +399,5 @@ func get_stats() -> Dictionary:
 		"total_pheromone": total_pheromone,
 		"colony_count": colonies.size(),
 		"food_source_count": food_sources.size(),
+		"obstacle_count": obstacles.size(),
 	}

@@ -218,10 +218,8 @@ func _draw() -> void:
 		var ant_pos: Vector2 = ant.global_position - global_position
 		var ant_color: Color = colony_color
 		
-		# Color based on state
-		if ant.carried_item != null:
-			ant_color = Color.YELLOW
-		elif ant.energy < ant.max_energy * 0.3:
+		# Color based on energy state
+		if ant.energy < ant.max_energy * 0.3:
 			ant_color = Color.ORANGE_RED  # Low energy warning
 		
 		# Draw ant body
@@ -230,3 +228,11 @@ func _draw() -> void:
 		# Draw heading indicator
 		var heading_end: Vector2 = ant_pos + Vector2(cos(ant.heading), sin(ant.heading)) * 6.0
 		draw_line(ant_pos, heading_end, ant_color, 1.0)
+		
+		# Draw carried food on top of ant at proper food size
+		if ant.carried_item != null:
+			var food_radius: float = 6.0  # Same as FoodSource.base_radius
+			if "base_radius" in ant.carried_item:
+				food_radius = ant.carried_item.base_radius
+			draw_circle(ant_pos, food_radius, Color.YELLOW_GREEN)
+			draw_arc(ant_pos, food_radius, 0, TAU, 12, Color.YELLOW_GREEN.darkened(0.3), 1.0)
