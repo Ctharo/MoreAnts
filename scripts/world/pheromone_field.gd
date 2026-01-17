@@ -7,20 +7,24 @@ var width: int
 var height: int
 var cell_size: float
 
-# Grid data (2D array stored as 1D)
+#region Grid Data (2D array stored as 1D)
 var grid: PackedFloat32Array
 var _next_grid: PackedFloat32Array  # Double buffer for diffusion
+#endregion
 
-# Field properties - SLOWER evaporation for visible trails
-var diffusion_rate: float = 0.1  # Reduced from 0.1
-var evaporation_rate: float = 0.005  # Reduced from 0.02 - trails last much longer
+#region Field Properties - Low evaporation for visible trails
+var diffusion_rate: float = 0.08
+var evaporation_rate: float = 0.002  # Very slow evaporation for persistent trails
 var max_concentration: float = 255.0
+#endregion
 
-# Visualization
+#region Visualization
 var color: Color = Color.GREEN
+#endregion
 
-# Statistics
+#region Statistics
 var current_total: float = 0.0
+#endregion
 
 
 func _init(p_name: String, world_width: float, world_height: float, p_cell_size: float) -> void:
@@ -138,7 +142,7 @@ func update(delta: float) -> void:
 				_next_grid[idx] = 0.0
 				continue
 			
-			# Evaporation
+			# Evaporation - multiplicative decay
 			current *= (1.0 - evaporation_rate * delta)
 			
 			# Diffusion (simple 4-neighbor averaging)

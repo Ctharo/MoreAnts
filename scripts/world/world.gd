@@ -6,27 +6,29 @@ signal pheromone_field_added(field_name: String)
 signal food_source_added(source: Node)
 signal food_source_depleted(source: Node)
 
-# World configuration
+#region Configuration
 @export var world_width: float = 2000.0
 @export var world_height: float = 2000.0
 @export var pheromone_cell_size: float = 10.0
 @export var spatial_hash_cell_size: float = 50.0
-
-# Pheromone field configuration
 @export var default_pheromone_types: Array = ["food_trail", "home_trail", "alarm"]
+#endregion
 
-# References
+#region References
 var pheromone_fields: Dictionary = {}  # String -> PheromoneField
 var spatial_hash: SpatialHash = null
 var colonies: Array = []
 var food_sources: Array = []
+#endregion
 
-# Visualization
+#region Visualization
 var _show_pheromones: bool = true
+#endregion
 
-# Physics tick tracking
+#region Physics Tick
 var _physics_accumulator: float = 0.0
 var _physics_interval: float = 1.0 / 30.0  # 30 Hz
+#endregion
 
 
 func _ready() -> void:
@@ -124,7 +126,7 @@ func _update_pheromone_fields(delta: float) -> void:
 
 
 ## Create a new pheromone field
-func create_pheromone_field(field_name: String, diffusion: float = 0.05, evaporation: float = 0.005) -> PheromoneField:
+func create_pheromone_field(field_name: String, diffusion: float = 0.05, evaporation: float = 0.003) -> PheromoneField:
 	if pheromone_fields.has(field_name):
 		return pheromone_fields[field_name]
 
@@ -133,12 +135,14 @@ func create_pheromone_field(field_name: String, diffusion: float = 0.05, evapora
 	field.diffusion_rate = diffusion
 	field.evaporation_rate = evaporation
 
-	# Set default colors
+	# Set default colors and properties per field type
 	match field_name:
 		"food_trail":
-			field.color = Color(0.2, 0.9, 0.2, 0.8)  # Bright green
+			field.color = Color(0.2, 0.95, 0.2, 0.9)  # Bright green
+			field.evaporation_rate = 0.003
 		"home_trail":
-			field.color = Color(0.2, 0.4, 0.9, 0.8)  # Blue
+			field.color = Color(0.3, 0.5, 1.0, 0.9)  # Brighter blue
+			field.evaporation_rate = 0.002  # Slower evaporation for home trails
 		"alarm":
 			field.color = Color(0.9, 0.2, 0.2, 0.8)  # Red
 			field.evaporation_rate = 0.05  # Alarm fades faster
@@ -240,10 +244,12 @@ func _draw_pheromones() -> void:
 		for y: int in range(field.height):
 			for x: int in range(field.width):
 				var value: float = field.get_at(x, y)
-				if value > 0.1:  # Only draw visible amounts
-					var intensity: float = clampf(value / 50.0, 0.0, 1.0)  # Normalize for visibility
+				if value > 0.05:  # Lower threshold for visibility
+					# Use logarithmic scaling for better visibility of faint trails
+					var normalized: float = log(1.0 + value) / log(1.0 + 30.0)
+					var intensity: float = clampf(normalized, 0.0, 1.0)
 					var draw_color: Color = field.color
-					draw_color.a = intensity * 0.7
+					draw_color.a = intensity * 0.8
 					
 					var rect: Rect2 = Rect2(
 						x * cell_size, 

@@ -159,7 +159,7 @@ func _update_ui() -> void:
 	food_stored_label.text = "Food Stored: %.0f" % stats.food_stored
 	food_collected_label.text = "Total Collected: %.0f" % stats.total_food_collected
 	efficiency_label.text = "Efficiency: %.2f food/s" % stats.colony_efficiency
-	sim_time_label.text = "Time: %.1fs" % GameManager.simulation_time
+	sim_time_label.text = "Time: %.1fs (x%.1f)" % [GameManager.simulation_time, GameManager.time_scale]
 
 	# Update global efficiency
 	var global_eff: float = GameManager.get_efficiency_ratio()
@@ -344,11 +344,12 @@ func _create_default_forager() -> BehaviorProgram:
 	search_move.blend_weights = {"pheromone": 0.6, "random": 0.3, "nest": -0.1}
 
 	# Drop home_trail while searching so ants can find their way back
+	# Increased amounts for better visibility
 	var search_home_pheromone: PheromoneAction = PheromoneActionScript.new()
 	search_home_pheromone.pheromone_name = "home_trail"
 	search_home_pheromone.deposit_mode = PheromoneAction.DepositMode.INVERSELY_TO_DISTANCE
-	search_home_pheromone.base_amount = 1.5
-	search_home_pheromone.max_amount = 4.0
+	search_home_pheromone.base_amount = 3.0  # Increased from 1.5
+	search_home_pheromone.max_amount = 8.0   # Increased from 4.0
 	search_home_pheromone.reference_distance = 400.0
 
 	search_state.tick_actions = [search_move, search_home_pheromone] as Array[BehaviorAction]
@@ -433,7 +434,7 @@ func _create_default_forager() -> BehaviorProgram:
 	var at_nest: DistanceCondition = DistanceConditionScript.new()
 	at_nest.target_type = DistanceCondition.TargetType.NEST
 	at_nest.compare_mode = DistanceCondition.CompareMode.CLOSER_THAN
-	at_nest.threshold = 30.0
+	at_nest.threshold = 50.0  # Increased from 30 for earlier transition
 	at_nest_trans.condition = at_nest
 	at_nest_trans.priority = 10
 
@@ -447,16 +448,21 @@ func _create_default_forager() -> BehaviorProgram:
 	return_state.transitions = [at_nest_trans, lost_food_trans] as Array[BehaviorTransition]
 	#endregion
 
-	#region Deposit State
+	#region Deposit State - MUST stop movement to prevent overshooting
 	var deposit_state: BehaviorState = BehaviorStateScript.new()
 	deposit_state.state_name = "Deposit"
 	deposit_state.display_color = Color.BLUE
 
+	# Stop movement while depositing - critical to prevent overshooting nest
+	var deposit_stop: MoveAction = MoveActionScript.new()
+	deposit_stop.move_mode = MoveAction.MoveMode.RANDOM_WALK
+	deposit_stop.speed_multiplier = 0.0
+
 	var drop: DropAction = DropActionScript.new()
 	drop.drop_mode = DropAction.DropMode.DROP_AT_NEST
-	drop.nest_threshold = 40.0
+	drop.nest_threshold = 70.0  # Increased from 40 for more forgiving drops
 
-	deposit_state.tick_actions = [drop] as Array[BehaviorAction]
+	deposit_state.tick_actions = [deposit_stop, drop] as Array[BehaviorAction]
 
 	var deposited_trans: BehaviorTransition = BehaviorTransitionScript.new()
 	deposited_trans.target_state = "Search"
