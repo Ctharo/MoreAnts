@@ -7,39 +7,58 @@ signal ant_spawned(ant: Node)
 signal ant_died(ant: Node, cause: String)
 signal food_received(amount: float)
 
-# Colony configuration
+#region Colony Configuration
 @export var colony_name: String = "Colony"
 @export var colony_color: Color = Color.RED
 @export var max_ants: int = 100
 @export var initial_ant_count: int = 20
-@export var min_ant_count: int = 10  # Minimum ants to maintain
-@export var spawn_rate: float = 0.5  # Ants per second when food available
-@export var ant_spawn_cost: float = 10.0  # Food required to spawn an ant
-@export var energy_refill_rate: float = 15.0  # Energy per second when at nest
+@export var min_ant_count: int = 10  ## Minimum ants to maintain
+@export var spawn_rate: float = 0.5  ## Ants per second when food available
+@export var ant_spawn_cost: float = 10.0  ## Food required to spawn an ant
+@export var energy_refill_rate: float = 50.0  ## Energy per second when at nest (increased!)
+#endregion
 
-# Nest position (center of colony)
+#region Nest Properties
 @export var nest_position: Vector2 = Vector2(1000, 1000)
 @export var nest_radius: float = 50.0
+#endregion
 
-# Resources
+#region Resources
 var food_stored: float = 100.0
 var total_food_collected: float = 0.0
+#endregion
 
-# Ants
+#region Ants
 var ants: Array = []
 var _ant_index_counter: int = 0
+#endregion
 
-# Behavior program for this colony's ants
-var behavior_program  # BehaviorProgram
+#region Behavior
+var behavior_program: BehaviorProgram = null  ## BehaviorProgram for this colony's ants
+#endregion
 
-# References
+#region References
 var world: Node = null
+#endregion
 
-# Spawn timer
+#region Spawn Timer
 var _spawn_accumulator: float = 0.0
+#endregion
 
-# Ant scene/script
-var _AntScript = null
+#region Ant Script
+var _AntScript: Script = null
+#endregion
+
+#region State Colors for Debug
+var _state_colors: Dictionary = {
+	"Search": Color.YELLOW,
+	"Harvest": Color.ORANGE,
+	"Return": Color.GREEN,
+	"GoHome": Color.ORANGE_RED,
+	"Rest": Color.LIGHT_BLUE,
+	"Deposit": Color.LIME_GREEN,
+}
+#endregion
 
 
 func _ready() -> void:
@@ -58,7 +77,6 @@ func _process(delta: float) -> void:
 	
 	# Maintain minimum ant count - priority spawning
 	if ants.size() < min_ant_count and food_stored >= ant_spawn_cost * 0.5:
-		# Reduced cost for maintaining minimum population
 		food_stored -= ant_spawn_cost * 0.5
 		spawn_ant()
 	
@@ -143,7 +161,7 @@ func _on_ant_died(cause: String, ant: Node) -> void:
 	ant_died.emit(ant, cause)
 
 
-func _on_ant_delivered_food(amount: float) -> void:
+func _on_ant_delivered_food(_amount: float) -> void:
 	# Food is received via receive_food()
 	pass
 
@@ -166,9 +184,9 @@ func _refill_ants_at_nest(delta: float) -> void:
 			# Ant is at nest - refill energy over time
 			var energy_needed: float = ant.max_energy - ant.energy
 			if energy_needed > 0.1:
-				# Refill energy at a rate, costs food
+				# Refill energy at a rate, costs food (reduced food cost for faster refill)
 				var refill_amount: float = minf(energy_refill_rate * delta, energy_needed)
-				var food_cost: float = refill_amount * 0.3  # Food to energy ratio
+				var food_cost: float = refill_amount * 0.1  # Reduced food cost
 				
 				if food_stored >= food_cost:
 					food_stored -= food_cost
@@ -180,6 +198,7 @@ func get_stats() -> Dictionary:
 	var total_food_carried: float = 0.0
 	var ants_carrying: int = 0
 	var valid_ant_count: int = 0
+	var state_counts: Dictionary = {}
 	
 	for ant: Node in ants:
 		if ant == null or not is_instance_valid(ant):
@@ -189,6 +208,10 @@ func get_stats() -> Dictionary:
 		if ant.carried_item != null:
 			ants_carrying += 1
 			total_food_carried += ant.carried_weight
+		
+		# Count states
+		var state_name: String = ant.current_state_name if "current_state_name" in ant else "Unknown"
+		state_counts[state_name] = state_counts.get(state_name, 0) + 1
 	
 	var colony_efficiency: float = total_food_collected / maxf(GameManager.simulation_time, 0.001)
 	
@@ -202,6 +225,7 @@ func get_stats() -> Dictionary:
 		"ants_carrying": ants_carrying,
 		"total_food_carried": total_food_carried,
 		"colony_efficiency": colony_efficiency,
+		"state_counts": state_counts,
 	}
 
 
@@ -218,8 +242,11 @@ func _draw() -> void:
 		var ant_pos: Vector2 = ant.global_position - global_position
 		var ant_color: Color = colony_color
 		
-		# Color based on energy state
-		if ant.energy < ant.max_energy * 0.3:
+		# Color based on state if debug enabled
+		if Ant.debug_show_state:
+			var state_name: String = ant.current_state_name if "current_state_name" in ant else ""
+			ant_color = _state_colors.get(state_name, colony_color)
+		elif ant.energy < ant.max_energy * 0.3:
 			ant_color = Color.ORANGE_RED  # Low energy warning
 		
 		# Draw ant body
@@ -231,8 +258,82 @@ func _draw() -> void:
 		
 		# Draw carried food on top of ant at proper food size
 		if ant.carried_item != null:
-			var food_radius: float = 6.0  # Same as FoodSource.base_radius
+			var food_radius: float = 6.0
 			if "base_radius" in ant.carried_item:
 				food_radius = ant.carried_item.base_radius
 			draw_circle(ant_pos, food_radius, Color.YELLOW_GREEN)
 			draw_arc(ant_pos, food_radius, 0, TAU, 12, Color.YELLOW_GREEN.darkened(0.3), 1.0)
+		
+		# Debug: Draw sensor range
+		if Ant.debug_show_sensors:
+			_draw_ant_debug_sensors(ant, ant_pos)
+		
+		# Debug: Draw pheromone samples
+		if Ant.debug_show_pheromone_samples:
+			_draw_ant_debug_pheromones(ant, ant_pos)
+
+
+func _draw_ant_debug_sensors(ant: Node, ant_pos: Vector2) -> void:
+	## Draw sensing ranges for debugging
+	var sensor_dist: float = ant.sensor_distance if "sensor_distance" in ant else 40.0
+	var neighbor_range: float = ant.neighbor_sense_range if "neighbor_sense_range" in ant else 60.0
+	var pickup_range: float = ant.pickup_range if "pickup_range" in ant else 20.0
+	
+	# Neighbor sensing range (outer)
+	draw_arc(ant_pos, neighbor_range, 0, TAU, 16, Color(0.5, 0.5, 1.0, 0.3), 1.0)
+	
+	# Pheromone sensing distance (with angle)
+	var heading_val: float = ant.heading if "heading" in ant else 0.0
+	var sensor_angle: float = ant.sensor_angle if "sensor_angle" in ant else PI / 6
+	
+	# Draw sensing cone
+	var left_angle: float = heading_val - sensor_angle
+	var right_angle: float = heading_val + sensor_angle
+	
+	var left_end: Vector2 = ant_pos + Vector2(cos(left_angle), sin(left_angle)) * sensor_dist
+	var center_end: Vector2 = ant_pos + Vector2(cos(heading_val), sin(heading_val)) * sensor_dist
+	var right_end: Vector2 = ant_pos + Vector2(cos(right_angle), sin(right_angle)) * sensor_dist
+	
+	draw_line(ant_pos, left_end, Color(0.0, 1.0, 0.0, 0.4), 1.0)
+	draw_line(ant_pos, center_end, Color(0.0, 1.0, 0.0, 0.6), 1.0)
+	draw_line(ant_pos, right_end, Color(0.0, 1.0, 0.0, 0.4), 1.0)
+	
+	# Pickup range (inner)
+	draw_arc(ant_pos, pickup_range, 0, TAU, 12, Color(1.0, 1.0, 0.0, 0.4), 1.0)
+
+
+func _draw_ant_debug_pheromones(ant: Node, ant_pos: Vector2) -> void:
+	## Draw pheromone sample values at antenna positions
+	if not "_debug_antenna_positions" in ant:
+		return
+	
+	var positions: Array = ant._debug_antenna_positions
+	if positions.size() < 3:
+		return
+	
+	var left_val: float = ant._debug_pheromone_left if "_debug_pheromone_left" in ant else 0.0
+	var center_val: float = ant._debug_pheromone_center if "_debug_pheromone_center" in ant else 0.0
+	var right_val: float = ant._debug_pheromone_right if "_debug_pheromone_right" in ant else 0.0
+	
+	# Normalize for display
+	var max_val: float = maxf(maxf(left_val, center_val), maxf(right_val, 1.0))
+	
+	# Draw circles at antenna positions sized by pheromone strength
+	for i: int in range(3):
+		var world_pos: Vector2 = positions[i]
+		var local_pos: Vector2 = world_pos - global_position
+		var val: float = [left_val, center_val, right_val][i]
+		var normalized: float = val / max_val if max_val > 0.01 else 0.0
+		
+		# Size based on pheromone strength (2-8 pixels)
+		var radius: float = 2.0 + normalized * 6.0
+		
+		# Color intensity based on strength
+		var col: Color = Color(0.0, 1.0, 0.0, 0.3 + normalized * 0.7)
+		
+		draw_circle(local_pos, radius, col)
+		
+		# Draw value text if significant
+		if val > 0.1:
+			# Can't easily draw text in _draw, so use circle size to indicate
+			pass

@@ -10,10 +10,12 @@ extends Node2D
 @onready var food_collected_label: Label = $UI/StatsPanel/VBox/FoodCollected
 @onready var efficiency_label: Label = $UI/StatsPanel/VBox/Efficiency
 @onready var sim_time_label: Label = $UI/StatsPanel/VBox/SimTime
+@onready var state_counts_label: Label = $UI/StatsPanel/VBox/StateCounts
 @onready var play_pause_btn: Button = $UI/StatsPanel/VBox/Controls/PlayPause
 @onready var speed_slider: HSlider = $UI/StatsPanel/VBox/Controls/SpeedSlider
 @onready var spawn_food_btn: Button = $UI/StatsPanel/VBox/SpawnFood
 @onready var toggle_efficiency_btn: Button = $UI/StatsPanel/VBox/ToggleEfficiency
+@onready var toggle_debug_btn: Button = $UI/StatsPanel/VBox/ToggleDebug
 @onready var back_to_settings_btn: Button = $UI/StatsPanel/VBox/BackToSettings
 
 @onready var cost_panel: PanelContainer = $UI/CostPanel
@@ -35,6 +37,9 @@ var category_colors: Dictionary = {
 	"metabolism": Color.SANDY_BROWN,
 }
 
+## Debug mode state
+var _debug_mode: bool = false
+
 
 func _ready() -> void:
 	camera = $Camera2D
@@ -44,6 +49,7 @@ func _ready() -> void:
 	speed_slider.value_changed.connect(_on_speed_changed)
 	spawn_food_btn.pressed.connect(_on_spawn_food_pressed)
 	toggle_efficiency_btn.pressed.connect(_on_toggle_efficiency_pressed)
+	toggle_debug_btn.pressed.connect(_on_toggle_debug_pressed)
 	back_to_settings_btn.pressed.connect(_on_back_to_settings_pressed)
 
 	# Apply settings from SettingsManager
@@ -163,6 +169,15 @@ func _update_ui() -> void:
 	food_collected_label.text = "Total Collected: %.0f" % stats.total_food_collected
 	efficiency_label.text = "Efficiency: %.2f food/s" % stats.colony_efficiency
 	sim_time_label.text = "Time: %.1fs (x%.1f)" % [GameManager.simulation_time, GameManager.time_scale]
+
+	# Show state counts
+	var state_counts: Dictionary = stats.get("state_counts", {})
+	var state_str: String = ""
+	for state_name: String in state_counts:
+		if state_str.length() > 0:
+			state_str += ", "
+		state_str += "%s:%d" % [state_name.left(3), state_counts[state_name]]
+	state_counts_label.text = "States: " + state_str
 
 	# Update global efficiency
 	var global_eff: float = GameManager.get_efficiency_ratio()
@@ -296,6 +311,12 @@ func _on_toggle_efficiency_pressed() -> void:
 	toggle_efficiency_btn.text = "Hide Efficiency Panel" if cost_panel.visible else "Show Efficiency Panel"
 
 
+func _on_toggle_debug_pressed() -> void:
+	_debug_mode = not _debug_mode
+	Ant.set_all_debug(_debug_mode)
+	toggle_debug_btn.text = "Hide Debug (D)" if _debug_mode else "Show Debug (D)"
+
+
 func _on_back_to_settings_pressed() -> void:
 	GameManager.reset_simulation()
 	CostTracker.reset()
@@ -316,6 +337,17 @@ func _input(event: InputEvent) -> void:
 				get_tree().reload_current_scene()
 			KEY_E:
 				_on_toggle_efficiency_pressed()
+			KEY_D:
+				_on_toggle_debug_pressed()
+			KEY_1:
+				# Toggle sensor visualization only
+				Ant.toggle_sensor_debug()
+			KEY_2:
+				# Toggle pheromone sample visualization only
+				Ant.toggle_pheromone_debug()
+			KEY_3:
+				# Toggle state color visualization only
+				Ant.toggle_state_debug()
 			KEY_ESCAPE:
 				_on_back_to_settings_pressed()
 
@@ -371,7 +403,7 @@ func _spawn_initial_obstacles() -> void:
 
 
 ## Create the default forager behavior inline to avoid class loading issues
-## Note: Pickup and Drop are now event-triggered, so behavior focuses on movement and pheromones
+## Improved version with better state transitions and energy thresholds
 func _create_default_forager() -> BehaviorProgram:
 	var BehaviorProgramScript: Script = load("res://scripts/behavior/behavior_program.gd")
 	var BehaviorStateScript: Script = load("res://scripts/behavior/behavior_state.gd")
@@ -406,7 +438,7 @@ func _create_default_forager() -> BehaviorProgram:
 
 	search_state.tick_actions = [search_move, search_home_pheromone] as Array[BehaviorAction]
 
-	# Transition to Return is now triggered by pickup event, but keep as fallback
+	# Transition to Return when carrying (triggered by pickup event)
 	var carrying_trans: BehaviorTransition = BehaviorTransitionScript.new()
 	carrying_trans.target_state = "Return"
 	var carrying: CarryingCondition = CarryingConditionScript.new()
@@ -414,7 +446,16 @@ func _create_default_forager() -> BehaviorProgram:
 	carrying_trans.condition = carrying
 	carrying_trans.priority = 10
 
-	search_state.transitions = [carrying_trans] as Array[BehaviorTransition]
+	# Transition to GoHome when energy is low (30% threshold)
+	var low_energy_trans: BehaviorTransition = BehaviorTransitionScript.new()
+	low_energy_trans.target_state = "GoHome"
+	var low_energy: EnergyCondition = EnergyConditionScript.new()
+	low_energy.compare_mode = EnergyCondition.CompareMode.BELOW_PERCENT
+	low_energy.threshold = 30.0
+	low_energy_trans.condition = low_energy
+	low_energy_trans.priority = 5
+
+	search_state.transitions = [carrying_trans, low_energy_trans] as Array[BehaviorTransition]
 	#endregion
 
 	#region Harvest State - Move toward food (pickup is event-triggered on contact)
@@ -458,10 +499,9 @@ func _create_default_forager() -> BehaviorProgram:
 	# Deposit food_trail so other ants can find the food source
 	var deposit_food_pheromone: PheromoneAction = PheromoneActionScript.new()
 	deposit_food_pheromone.pheromone_name = "food_trail"
-	deposit_food_pheromone.deposit_mode = PheromoneAction.DepositMode.INVERSELY_TO_DISTANCE
-	deposit_food_pheromone.base_amount = 2.0
+	deposit_food_pheromone.deposit_mode = PheromoneAction.DepositMode.CONSTANT
+	deposit_food_pheromone.base_amount = 4.0  # Constant strong trail
 	deposit_food_pheromone.max_amount = 6.0
-	deposit_food_pheromone.reference_distance = 300.0
 
 	return_state.tick_actions = [return_move, deposit_food_pheromone] as Array[BehaviorAction]
 
@@ -501,23 +541,25 @@ func _create_default_forager() -> BehaviorProgram:
 	go_home_state.transitions = [at_nest_trans] as Array[BehaviorTransition]
 	#endregion
 
-	#region Rest State - Wait at nest until energy restored
+	#region Rest State - Wait at nest until energy restored (lowered threshold!)
 	var rest_state: BehaviorState = BehaviorStateScript.new()
 	rest_state.state_name = "Rest"
 	rest_state.display_color = Color.LIGHT_BLUE
 
-	# No movement while resting
+	# Slow movement while resting (milling around the nest)
 	var rest_move: MoveAction = MoveActionScript.new()
 	rest_move.move_mode = MoveAction.MoveMode.RANDOM_WALK
-	rest_move.speed_multiplier = 0.0
+	rest_move.speed_multiplier = 0.1  # Very slow, not stopped
+	rest_move.random_turn_rate = 0.5
 
 	rest_state.tick_actions = [rest_move] as Array[BehaviorAction]
 
+	# Transition back to Search when energy is above 60% (lowered from 80%)
 	var rested_trans: BehaviorTransition = BehaviorTransitionScript.new()
 	rested_trans.target_state = "Search"
 	var high_energy: EnergyCondition = EnergyConditionScript.new()
 	high_energy.compare_mode = EnergyCondition.CompareMode.ABOVE_PERCENT
-	high_energy.threshold = 80.0
+	high_energy.threshold = 60.0  # Lowered from 80%
 	rested_trans.condition = high_energy
 	rested_trans.priority = 10
 

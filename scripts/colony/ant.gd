@@ -75,6 +75,19 @@ var efficiency_tracker: AntEfficiencyTracker = null
 var _sensor_cache: Dictionary = {}
 #endregion
 
+#region Debug Visualization (static flags shared by all ants)
+static var debug_show_sensors: bool = false  ## Show sensing ranges
+static var debug_show_pheromone_samples: bool = false  ## Show pheromone antenna sampling
+static var debug_show_state: bool = false  ## Color ants by state
+#endregion
+
+#region Debug Data (per-ant data for visualization)
+var _debug_pheromone_left: float = 0.0
+var _debug_pheromone_center: float = 0.0
+var _debug_pheromone_right: float = 0.0
+var _debug_antenna_positions: Array[Vector2] = []  ## [left, center, right]
+#endregion
+
 #region Event State Tracking
 var _was_at_nest: bool = false
 var _was_energy_critical: bool = false
@@ -319,7 +332,9 @@ func _resolve_obstacle_collision(from_pos: Vector2, to_pos: Vector2) -> Vector2:
 func _on_entered_nest() -> void:
 	if carried_item != null:
 		_deposit_food_at_nest()
-	speed = 0.0
+		# Only stop briefly when depositing food, then resume
+		speed = base_speed * 0.5  # Slow down but don't stop completely
+	# Don't set speed to 0 when just passing through!
 
 
 func _on_food_contact(food: Node) -> void:
@@ -449,7 +464,23 @@ func _update_sensors() -> void:
 		var fields: Dictionary = world.get_pheromone_fields()
 		for fname: String in fields:
 			var field: PheromoneField = fields[fname]
-			_sensor_cache["pheromone_" + fname] = field.sample_antenna(global_position, heading, sensor_distance, sensor_angle)
+			var samples: Dictionary = field.sample_antenna(global_position, heading, sensor_distance, sensor_angle)
+			_sensor_cache["pheromone_" + fname] = samples
+			
+			# Store debug data for primary pheromone (food_trail for Search, home_trail for Return)
+			if debug_show_pheromone_samples:
+				if (current_state_name == "Search" and fname == "food_trail") or \
+				   (current_state_name == "Return" and fname == "home_trail"):
+					_debug_pheromone_left = samples.get("left", 0.0)
+					_debug_pheromone_center = samples.get("center", 0.0)
+					_debug_pheromone_right = samples.get("right", 0.0)
+					
+					# Store antenna positions for debug drawing
+					_debug_antenna_positions = [
+						global_position + Vector2(cos(heading - sensor_angle), sin(heading - sensor_angle)) * sensor_distance,
+						global_position + Vector2(cos(heading), sin(heading)) * sensor_distance,
+						global_position + Vector2(cos(heading + sensor_angle), sin(heading + sensor_angle)) * sensor_distance,
+					]
 	
 	# Nest
 	if colony != null:
@@ -465,7 +496,7 @@ func _update_sensors() -> void:
 			_sense_food(sh)
 			_sense_ants(sh)
 			_sense_obstacles(sh)
-			_sense_ant_directions(sh)  # New: Social navigation
+			_sense_ant_directions(sh)  # Social navigation
 
 
 func _sense_food(sh: SpatialHash) -> void:
@@ -506,12 +537,9 @@ func _sense_obstacles(sh: SpatialHash) -> void:
 
 
 ## Sense other ants' directions for social navigation
-## Ants carrying food heading direction X suggests food is in direction X + PI
-## Ants without food heading direction Y might be heading toward food
 func _sense_ant_directions(sh: SpatialHash) -> void:
 	var ants_nearby: Array = sh.query_radius_group(global_position, ant_direction_sense_range, "ants", self)
 	
-	# Weighted direction vectors
 	var food_direction_hint: Vector2 = Vector2.ZERO
 	var search_direction_hint: Vector2 = Vector2.ZERO
 	var carrying_boost: float = SettingsManager.get_setting("ant_direction_carrying_boost")
@@ -528,39 +556,30 @@ func _sense_ant_directions(sh: SpatialHash) -> void:
 		if ant_node == self:
 			continue
 		
-		# Get ant properties
 		var ant_pos: Vector2 = ant_node.global_position
 		var ant_heading: float = ant_node.heading if "heading" in ant_node else 0.0
 		var ant_carrying: bool = ant_node.carried_item != null if "carried_item" in ant_node else false
 		
-		# Calculate weight based on distance (closer = more influential)
 		var dist: float = global_position.distance_to(ant_pos)
 		var weight: float = pow(decay_factor, dist / ant_direction_sense_range)
 		
-		# Direction this ant is facing
 		var ant_dir: Vector2 = Vector2.from_angle(ant_heading)
 		
 		if ant_carrying:
-			# Ant with food is heading TOWARD nest, so food is in OPPOSITE direction
-			# The direction from this ant back to where it came from
-			var food_hint_dir: Vector2 = -ant_dir  # Opposite of where carrying ant is heading
+			var food_hint_dir: Vector2 = -ant_dir
 			food_direction_hint += food_hint_dir * weight * carrying_boost
 			food_weight_total += weight * carrying_boost
 			carrying_count += 1
 		else:
-			# Ant without food might be heading toward food
-			# Consider if they're moving away from nest (more likely searching for food)
 			if colony != null:
 				var ant_to_nest: Vector2 = colony.nest_position - ant_pos
 				var heading_away_from_nest: bool = ant_dir.dot(ant_to_nest.normalized()) < 0.3
 				
 				if heading_away_from_nest:
-					# This ant is searching and heading away from nest - follow their lead
 					search_direction_hint += ant_dir * weight
 					search_weight_total += weight
 					searching_count += 1
 	
-	# Normalize and store
 	if food_weight_total > 0.01:
 		food_direction_hint /= food_weight_total
 		_sensor_cache["ant_food_hint_direction"] = food_direction_hint.angle()
@@ -577,7 +596,6 @@ func _sense_ant_directions(sh: SpatialHash) -> void:
 		_sensor_cache["ant_search_hint_direction"] = 0.0
 		_sensor_cache["ant_search_hint_strength"] = 0.0
 	
-	# Combined hint (weighted average of both signals)
 	var combined_hint: Vector2 = Vector2.ZERO
 	if food_weight_total > 0.01:
 		combined_hint += Vector2.from_angle(_sensor_cache["ant_food_hint_direction"]) * _sensor_cache["ant_food_hint_strength"] * 1.5
@@ -588,7 +606,7 @@ func _sense_ant_directions(sh: SpatialHash) -> void:
 		_sensor_cache["ant_direction_hint"] = combined_hint.angle()
 		_sensor_cache["ant_direction_strength"] = minf(combined_hint.length(), 1.0)
 	else:
-		_sensor_cache["ant_direction_hint"] = heading  # Default to current heading
+		_sensor_cache["ant_direction_hint"] = heading
 		_sensor_cache["ant_direction_strength"] = 0.0
 	
 	_sensor_cache["nearby_carrying_count"] = carrying_count
@@ -697,3 +715,23 @@ func stop_movement() -> void:
 
 func resume_movement() -> void:
 	speed = base_speed
+
+
+#region Debug Visualization Static Methods
+static func toggle_sensor_debug() -> void:
+	debug_show_sensors = not debug_show_sensors
+
+
+static func toggle_pheromone_debug() -> void:
+	debug_show_pheromone_samples = not debug_show_pheromone_samples
+
+
+static func toggle_state_debug() -> void:
+	debug_show_state = not debug_show_state
+
+
+static func set_all_debug(enabled: bool) -> void:
+	debug_show_sensors = enabled
+	debug_show_pheromone_samples = enabled
+	debug_show_state = enabled
+#endregion

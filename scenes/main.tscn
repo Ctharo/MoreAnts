@@ -20,8 +20,8 @@ script = ExtResource("3_colony")
 [node name="UI" type="CanvasLayer" parent="." unique_id=1444691376]
 
 [node name="StatsPanel" type="PanelContainer" parent="UI" unique_id=1558046223]
-offset_right = 250.0
-offset_bottom = 300.0
+offset_right = 280.0
+offset_bottom = 380.0
 
 [node name="VBox" type="VBoxContainer" parent="UI/StatsPanel" unique_id=293454780]
 layout_mode = 2
@@ -54,6 +54,11 @@ text = "Efficiency: 0.00 food/s"
 layout_mode = 2
 text = "Time: 0.0s"
 
+[node name="StateCounts" type="Label" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "States: Sea:0, Ret:0, Res:0"
+
 [node name="HSeparator2" type="HSeparator" parent="UI/StatsPanel/VBox" unique_id=1109998031]
 layout_mode = 2
 
@@ -79,6 +84,16 @@ text = "Spawn Food (F)"
 [node name="ToggleEfficiency" type="Button" parent="UI/StatsPanel/VBox" unique_id=1123286276]
 layout_mode = 2
 text = "Show Efficiency Panel (E)"
+
+[node name="ToggleDebug" type="Button" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+text = "Show Debug (D)"
+
+[node name="DebugHelp" type="Label" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
+theme_override_font_sizes/font_size = 10
+text = "1=Sensors, 2=Pheromones, 3=States"
 
 [node name="BackToSettings" type="Button" parent="UI/StatsPanel/VBox"]
 layout_mode = 2
