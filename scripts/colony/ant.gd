@@ -33,12 +33,15 @@ var colony_id: int = 0  ## For multi-colony support
 #region Physical Properties
 @export var base_speed: float = 80.0
 @export var max_turn_rate: float = PI * 3.0
-@export var sensor_distance: float = 40.0
+## Pheromone/scent sensing range - ants have excellent chemical sensing (50% further than sight)
+@export var sensor_distance: float = 90.0
 @export var sensor_angle: float = PI / 6
 @export var pickup_range: float = 20.0
-@export var neighbor_sense_range: float = 60.0
+## Visual/sight range for detecting food and ants - ants have poor eyesight
+@export var sight_sense_range: float = 60.0
 @export var obstacle_sense_range: float = 35.0
-@export var ant_direction_sense_range: float = 80.0  ## Range for observing other ants' directions
+## Range for observing other ants' directions (social navigation)
+@export var ant_direction_sense_range: float = 80.0
 #endregion
 
 #region Movement - Updated every frame
@@ -459,7 +462,7 @@ func decision_tick() -> void:
 func _update_sensors() -> void:
 	_sensor_cache.clear()
 	
-	# Pheromones
+	# Pheromones - uses sensor_distance (scent range, longer than sight)
 	if world != null:
 		var fields: Dictionary = world.get_pheromone_fields()
 		for fname: String in fields:
@@ -489,7 +492,7 @@ func _update_sensors() -> void:
 		_sensor_cache["nest_distance"] = to_nest.length()
 		_sensor_cache["at_nest"] = to_nest.length() < colony.nest_radius
 	
-	# Nearby entities
+	# Nearby entities - uses sight_sense_range (shorter than scent)
 	if world != null:
 		var sh: SpatialHash = world.get_spatial_hash()
 		if sh != null:
@@ -500,7 +503,8 @@ func _update_sensors() -> void:
 
 
 func _sense_food(sh: SpatialHash) -> void:
-	var foods: Array = sh.query_radius_group(global_position, neighbor_sense_range, "food", self)
+	# Food detection uses sight range (visual detection)
+	var foods: Array = sh.query_radius_group(global_position, sight_sense_range, "food", self)
 	var available: Array = []
 	for f: Node in foods:
 		if f != null and is_instance_valid(f) and not f.is_queued_for_deletion():
@@ -519,7 +523,8 @@ func _sense_food(sh: SpatialHash) -> void:
 
 
 func _sense_ants(sh: SpatialHash) -> void:
-	var ants_nearby: Array = sh.query_radius_group(global_position, neighbor_sense_range, "ants", self)
+	# Ant detection uses sight range (visual detection)
+	var ants_nearby: Array = sh.query_radius_group(global_position, sight_sense_range, "ants", self)
 	_sensor_cache["nearby_ants_count"] = ants_nearby.size()
 
 

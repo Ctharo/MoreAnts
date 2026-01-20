@@ -275,30 +275,33 @@ func _draw() -> void:
 
 func _draw_ant_debug_sensors(ant: Node, ant_pos: Vector2) -> void:
 	## Draw sensing ranges for debugging
-	var sensor_dist: float = ant.sensor_distance if "sensor_distance" in ant else 40.0
-	var neighbor_range: float = ant.neighbor_sense_range if "neighbor_sense_range" in ant else 60.0
+	var scent_range: float = ant.sensor_distance if "sensor_distance" in ant else 90.0
+	var sight_range: float = ant.sight_sense_range if "sight_sense_range" in ant else 60.0
 	var pickup_range: float = ant.pickup_range if "pickup_range" in ant else 20.0
 	
-	# Neighbor sensing range (outer)
-	draw_arc(ant_pos, neighbor_range, 0, TAU, 16, Color(0.5, 0.5, 1.0, 0.3), 1.0)
+	# Scent/pheromone sensing range (outer, green - longest range)
+	draw_arc(ant_pos, scent_range, 0, TAU, 16, Color(0.0, 1.0, 0.0, 0.25), 1.0)
 	
-	# Pheromone sensing distance (with angle)
+	# Sight sensing range (middle, blue)
+	draw_arc(ant_pos, sight_range, 0, TAU, 16, Color(0.5, 0.5, 1.0, 0.3), 1.0)
+	
+	# Pheromone sensing cone (with angle)
 	var heading_val: float = ant.heading if "heading" in ant else 0.0
 	var sensor_angle: float = ant.sensor_angle if "sensor_angle" in ant else PI / 6
 	
-	# Draw sensing cone
+	# Draw sensing cone for scent
 	var left_angle: float = heading_val - sensor_angle
 	var right_angle: float = heading_val + sensor_angle
 	
-	var left_end: Vector2 = ant_pos + Vector2(cos(left_angle), sin(left_angle)) * sensor_dist
-	var center_end: Vector2 = ant_pos + Vector2(cos(heading_val), sin(heading_val)) * sensor_dist
-	var right_end: Vector2 = ant_pos + Vector2(cos(right_angle), sin(right_angle)) * sensor_dist
+	var left_end: Vector2 = ant_pos + Vector2(cos(left_angle), sin(left_angle)) * scent_range
+	var center_end: Vector2 = ant_pos + Vector2(cos(heading_val), sin(heading_val)) * scent_range
+	var right_end: Vector2 = ant_pos + Vector2(cos(right_angle), sin(right_angle)) * scent_range
 	
 	draw_line(ant_pos, left_end, Color(0.0, 1.0, 0.0, 0.4), 1.0)
 	draw_line(ant_pos, center_end, Color(0.0, 1.0, 0.0, 0.6), 1.0)
 	draw_line(ant_pos, right_end, Color(0.0, 1.0, 0.0, 0.4), 1.0)
 	
-	# Pickup range (inner)
+	# Pickup range (inner, yellow)
 	draw_arc(ant_pos, pickup_range, 0, TAU, 12, Color(1.0, 1.0, 0.0, 0.4), 1.0)
 
 
