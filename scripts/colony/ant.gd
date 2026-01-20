@@ -2,6 +2,7 @@ class_name Ant
 extends Node2D
 ## Individual ant agent with continuous movement and event-driven triggers
 ## Movement happens every frame; strategic decisions at ticks; key moments trigger immediately
+## Now includes social navigation - observing other ants' directions
 
 #region Signals - Event-driven triggers
 signal food_delivered(amount: float)
@@ -26,6 +27,7 @@ var world: Node = null
 
 #region Identity
 var ant_index: int = 0
+var colony_id: int = 0  ## For multi-colony support
 #endregion
 
 #region Physical Properties
@@ -35,13 +37,14 @@ var ant_index: int = 0
 @export var sensor_angle: float = PI / 6
 @export var pickup_range: float = 20.0
 @export var neighbor_sense_range: float = 60.0
-@export var obstacle_sense_range: float = 35.0  # How far ahead to sense obstacles
+@export var obstacle_sense_range: float = 35.0
+@export var ant_direction_sense_range: float = 80.0  ## Range for observing other ants' directions
 #endregion
 
 #region Movement - Updated every frame
 var heading: float = 0.0
 var desired_heading: float = 0.0
-var speed: float = 80.0  # Always moving by default
+var speed: float = 80.0
 #endregion
 
 #region Ant State
@@ -72,11 +75,11 @@ var efficiency_tracker: AntEfficiencyTracker = null
 var _sensor_cache: Dictionary = {}
 #endregion
 
-#region Event State Tracking - for detecting transitions
+#region Event State Tracking
 var _was_at_nest: bool = false
 var _was_energy_critical: bool = false
-var _energy_critical_threshold: float = 0.2  # 20%
-var _energy_restored_threshold: float = 0.5  # 50%
+var _energy_critical_threshold: float = 0.2
+var _energy_restored_threshold: float = 0.5
 #endregion
 
 #region World Bounds
@@ -89,19 +92,17 @@ func _ready() -> void:
 	add_to_group("ants")
 	efficiency_tracker = AntEfficiencyTracker.new()
 	
-	# Random initial heading
 	heading = randf() * TAU
 	desired_heading = heading
-	
-	# Start moving immediately
 	speed = base_speed
 	
-	# Connect our own signals for immediate responses
+	# Load ant direction sense range from settings
+	ant_direction_sense_range = SettingsManager.get_setting("ant_direction_sense_range")
+	
 	_connect_event_handlers()
 
 
 func _connect_event_handlers() -> void:
-	## Connect signals to immediate response handlers
 	entered_nest.connect(_on_entered_nest)
 	food_contact.connect(_on_food_contact)
 	energy_critical.connect(_on_energy_critical)
@@ -123,13 +124,12 @@ func _process(delta: float) -> void:
 		heading += clampf(angle_diff, -max_turn, max_turn)
 		heading = fmod(heading + TAU, TAU)
 	
-	# 3. Move forward (always, unless speed is explicitly 0)
+	# 3. Move forward
 	if speed > 0.1:
 		var move_dist: float = speed * dt
 		var dir: Vector2 = Vector2.from_angle(heading)
 		var new_pos: Vector2 = global_position + dir * move_dist
 		
-		# Check for obstacle collision and slide along surface
 		new_pos = _resolve_obstacle_collision(global_position, new_pos)
 		
 		# Bounce off walls
@@ -144,7 +144,6 @@ func _process(delta: float) -> void:
 		
 		heading = fmod(heading + TAU, TAU)
 		
-		# Track movement
 		var actual_dist: float = global_position.distance_to(new_pos)
 		if actual_dist > 0.01:
 			efficiency_tracker.record_distance(actual_dist)
@@ -153,31 +152,25 @@ func _process(delta: float) -> void:
 				move_cost *= 1.5
 			_apply_energy_cost(move_cost)
 		
-		# Update position
 		global_position = new_pos
 		
-		# Update path integrator
 		if colony != null:
 			path_integrator = colony.nest_position - global_position
 	
-	# 4. Update visual rotation
 	rotation = heading
 	
-	# 5. Check for event triggers (every frame for responsiveness)
 	_check_spatial_events()
 	_check_energy_events()
 	_check_food_proximity()
 
 
 func _check_spatial_events() -> void:
-	## Check for nest entry/exit and emit signals
 	if colony == null:
 		return
 	
 	var dist_to_nest: float = global_position.distance_to(colony.nest_position)
 	var is_at_nest: bool = dist_to_nest < colony.nest_radius
 	
-	# Detect transitions
 	if is_at_nest and not _was_at_nest:
 		entered_nest.emit()
 	elif not is_at_nest and _was_at_nest:
@@ -187,7 +180,6 @@ func _check_spatial_events() -> void:
 
 
 func _check_energy_events() -> void:
-	## Check for energy threshold crossings
 	var energy_percent: float = energy / max_energy
 	
 	if energy_percent < _energy_critical_threshold and not _was_energy_critical:
@@ -199,9 +191,8 @@ func _check_energy_events() -> void:
 
 
 func _check_food_proximity() -> void:
-	## Check if we're touching food (for immediate pickup when not carrying)
 	if carried_item != null:
-		return  # Already carrying something
+		return
 	
 	if world == null:
 		return
@@ -210,7 +201,6 @@ func _check_food_proximity() -> void:
 	if sh == null:
 		return
 	
-	# Check for food within pickup range
 	var foods: Array = sh.query_radius_group(global_position, pickup_range, "food", self)
 	for food: Node in foods:
 		if food == null or not is_instance_valid(food):
@@ -223,14 +213,12 @@ func _check_food_proximity() -> void:
 			if not food.is_available():
 				continue
 		
-		# Found valid food in range - emit contact signal
 		food_contact.emit(food)
-		break  # Only process one food item
+		break
 
 
-#region Obstacle Avoidance - Antenna-based sensing
+#region Obstacle Avoidance
 func _check_obstacle_avoidance() -> void:
-	## Sense obstacles ahead using antenna-like probes and adjust desired_heading
 	if world == null:
 		return
 	
@@ -238,8 +226,7 @@ func _check_obstacle_avoidance() -> void:
 	if sh == null:
 		return
 	
-	# Sample at multiple angles ahead (like ant antennae)
-	var probe_angles: Array[float] = [0.0, -0.4, 0.4]  # Center, left, right
+	var probe_angles: Array[float] = [0.0, -0.4, 0.4]
 	var obstacle_detected: bool = false
 	var left_blocked: bool = false
 	var right_blocked: bool = false
@@ -250,19 +237,16 @@ func _check_obstacle_avoidance() -> void:
 		var probe_angle: float = heading + probe_angles[i]
 		var probe_end: Vector2 = global_position + Vector2.from_angle(probe_angle) * obstacle_sense_range
 		
-		# Query obstacles near the probe endpoint
 		var obstacles: Array = sh.query_radius_group(probe_end, 15.0, "obstacles")
 		
 		for obs: Node in obstacles:
 			if not is_instance_valid(obs):
 				continue
 			
-			# Check if probe line intersects obstacle
 			if obs.has_method("intersects_segment"):
 				if obs.intersects_segment(global_position, probe_end):
 					obstacle_detected = true
 					
-					# Track which direction is blocked
 					if i == 0:
 						center_blocked = true
 					elif i == 1:
@@ -270,44 +254,34 @@ func _check_obstacle_avoidance() -> void:
 					else:
 						right_blocked = true
 					
-					# Get distance for priority
 					if obs.has_method("get_distance_to_surface"):
 						var dist: float = obs.get_distance_to_surface(global_position)
 						nearest_dist = minf(nearest_dist, dist)
 	
-	# Adjust heading based on which probes detected obstacles
 	if obstacle_detected:
-		var turn_amount: float = PI / 3  # Base turn amount
+		var turn_amount: float = PI / 3
 		
-		# Scale turn urgency by distance
 		if nearest_dist < obstacle_sense_range * 0.5:
-			turn_amount = PI / 2  # More urgent turn when close
+			turn_amount = PI / 2
 		
 		if center_blocked:
 			if left_blocked and not right_blocked:
-				# Left and center blocked - turn right
 				desired_heading = heading + turn_amount
 			elif right_blocked and not left_blocked:
-				# Right and center blocked - turn left
 				desired_heading = heading - turn_amount
 			elif left_blocked and right_blocked:
-				# All blocked - turn around
 				desired_heading = heading + PI * 0.8
 			else:
-				# Only center blocked - pick a random direction
 				desired_heading = heading + turn_amount * (1.0 if randf() > 0.5 else -1.0)
 		elif left_blocked:
-			# Only left blocked - turn right
 			desired_heading = heading + turn_amount * 0.5
 		elif right_blocked:
-			# Only right blocked - turn left
 			desired_heading = heading - turn_amount * 0.5
 		
 		desired_heading = fmod(desired_heading + TAU, TAU)
 
 
 func _resolve_obstacle_collision(from_pos: Vector2, to_pos: Vector2) -> Vector2:
-	## Check if movement would collide with obstacle and resolve by sliding
 	if world == null:
 		return to_pos
 	
@@ -315,7 +289,6 @@ func _resolve_obstacle_collision(from_pos: Vector2, to_pos: Vector2) -> Vector2:
 	if sh == null:
 		return to_pos
 	
-	# Query obstacles near the movement path
 	var mid_point: Vector2 = (from_pos + to_pos) / 2.0
 	var move_dist: float = from_pos.distance_to(to_pos)
 	var obstacles: Array = sh.query_radius_group(mid_point, move_dist + 20.0, "obstacles")
@@ -326,17 +299,13 @@ func _resolve_obstacle_collision(from_pos: Vector2, to_pos: Vector2) -> Vector2:
 		if not is_instance_valid(obs):
 			continue
 		
-		# Check if destination is inside obstacle
 		if obs.has_method("contains_point") and obs.contains_point(final_pos):
-			# Push out to surface
 			if obs.has_method("get_nearest_surface_point") and obs.has_method("get_surface_normal"):
 				var surface_point: Vector2 = obs.get_nearest_surface_point(final_pos)
 				var normal: Vector2 = obs.get_surface_normal(final_pos)
 				
-				# Place ant just outside the obstacle
 				final_pos = surface_point + normal * 3.0
 				
-				# Adjust heading to slide along surface
 				var movement_dir: Vector2 = (to_pos - from_pos).normalized()
 				var slide_dir: Vector2 = movement_dir - normal * movement_dir.dot(normal)
 				if slide_dir.length() > 0.1:
@@ -346,63 +315,49 @@ func _resolve_obstacle_collision(from_pos: Vector2, to_pos: Vector2) -> Vector2:
 #endregion
 
 
-#region Event Handlers - Immediate responses to triggers
+#region Event Handlers
 func _on_entered_nest() -> void:
-	## Immediate response when entering nest
-	# If carrying food, deposit it immediately
 	if carried_item != null:
 		_deposit_food_at_nest()
-	
-	# Stop movement briefly when arriving at nest
 	speed = 0.0
 
 
 func _on_food_contact(food: Node) -> void:
-	## Immediate response when contacting food
-	# Only pick up if we're in a state that should pick up food
-	# Check if current behavior state allows pickup (Search or Harvest states)
 	if current_state_name in ["Search", "Harvest"]:
 		_try_pickup_food(food)
 
 
 func _on_energy_critical() -> void:
-	## Immediate response when energy becomes critical
-	# Force state change to GoHome if not already heading home
 	if current_state_name not in ["GoHome", "Rest", "Deposit"]:
 		_force_state_change("GoHome")
 #endregion
 
 
-#region Immediate Actions - Bypass behavior system for physical interactions
+#region Immediate Actions
 func _deposit_food_at_nest() -> void:
-	## Immediately deposit carried food at nest
 	if carried_item == null:
 		return
 	
 	var food_val: float = carried_item.food_value if "food_value" in carried_item else 1.0
 	
-	# Give food to colony
 	if colony != null:
 		colony.receive_food(food_val)
 	
-	# Track stats
 	food_delivered.emit(food_val)
 	efficiency_tracker.record_food_delivered(food_val)
 	if behavior_program != null:
 		behavior_program.record_food_collected(food_val)
 	
-	# Destroy the carried food item
 	if is_instance_valid(carried_item):
 		carried_item.queue_free()
 	
 	carried_item = null
 	carried_weight = 0.0
 	
-	dropped_item.emit(true)  # was_delivery = true
+	dropped_item.emit(true)
 
 
 func _try_pickup_food(food: Node) -> void:
-	## Immediately try to pick up food
 	if carried_item != null:
 		return
 	
@@ -415,13 +370,10 @@ func _try_pickup_food(food: Node) -> void:
 			carried_item = picked
 			carried_weight = picked.weight if "weight" in picked else 1.0
 			picked_up_item.emit(picked)
-			
-			# Immediately transition to Return state
 			_force_state_change("Return")
 
 
 func _force_state_change(new_state_name: String) -> void:
-	## Force an immediate state transition (bypasses normal transition checks)
 	if behavior_program == null:
 		return
 	
@@ -429,13 +381,11 @@ func _force_state_change(new_state_name: String) -> void:
 	if new_state == null:
 		return
 	
-	# Exit current state
 	var current_state: BehaviorState = behavior_program.get_state(current_state_name)
 	if current_state != null:
 		var exit_result: Dictionary = current_state.exit(self, _build_context())
 		_apply_energy_cost(exit_result.get("energy_cost", 0.0))
 	
-	# Enter new state
 	var enter_result: Dictionary = new_state.enter(self, _build_context())
 	_apply_energy_cost(enter_result.get("energy_cost", 0.0))
 	
@@ -450,38 +400,33 @@ func initialize(p_colony: Node, p_world: Node, p_index: int, p_behavior: Behavio
 	ant_index = p_index
 	behavior_program = p_behavior
 	
-	# Set world bounds
+	if colony != null and "colony_id" in colony:
+		colony_id = colony.colony_id
+	
 	if world != null:
 		_world_min = Vector2(10, 10)
 		_world_max = Vector2(world.world_width - 10, world.world_height - 10)
 	
-	# Start at colony
 	if colony != null:
 		global_position = colony.nest_position + Vector2(randf_range(-20, 20), randf_range(-20, 20))
-		_was_at_nest = true  # Start at nest
+		_was_at_nest = true
 	
-	# Ensure we're moving
 	speed = base_speed
 	
-	# Initialize behavior
 	if behavior_program != null:
 		var init_result: Dictionary = behavior_program.enter_initial_state(self, _build_context())
 		current_state_name = init_result.get("state", "")
 		_apply_energy_cost(init_result.get("energy_cost", 0.0))
 
 
-## Called by GameManager on decision tick - strategic decisions only
+## Called by GameManager on decision tick
 func decision_tick() -> void:
 	if not GameManager.is_ant_cohort(ant_index):
 		return
 	
-	# Metabolism
 	_apply_energy_cost(GameManager.get_action_cost("idle"))
-	
-	# Sense environment
 	_update_sensors()
 	
-	# Run behavior program for strategic decisions (movement direction, pheromone deposits)
 	var context: Dictionary = _build_context()
 	if behavior_program != null:
 		var result: Dictionary = behavior_program.process_tick(self, context, current_state_name)
@@ -492,7 +437,6 @@ func decision_tick() -> void:
 		_apply_energy_cost(result.energy_cost)
 		_process_action_results(result.action_results)
 	
-	# Death check
 	if energy <= 0:
 		_die("starvation")
 
@@ -518,39 +462,137 @@ func _update_sensors() -> void:
 	if world != null:
 		var sh: SpatialHash = world.get_spatial_hash()
 		if sh != null:
-			# Food
-			var foods: Array = sh.query_radius_group(global_position, neighbor_sense_range, "food", self)
-			var available: Array = []
-			for f: Node in foods:
-				if f != null and is_instance_valid(f) and not f.is_queued_for_deletion():
-					if "is_picked_up" in f and not f.is_picked_up:
-						available.append(f)
-			
-			_sensor_cache["nearby_food_count"] = available.size()
-			if available.size() > 0:
-				var nearest: Node = _find_nearest(available)
-				if nearest != null:
-					_sensor_cache["nearest_food"] = nearest
-					_sensor_cache["nearest_food_distance"] = global_position.distance_to(nearest.global_position)
-					_sensor_cache["nearest_food_direction"] = (nearest.global_position - global_position).angle()
-			else:
-				_sensor_cache["nearest_food_distance"] = INF
-			
-			# Ants
-			var ants_nearby: Array = sh.query_radius_group(global_position, neighbor_sense_range, "ants", self)
-			_sensor_cache["nearby_ants_count"] = ants_nearby.size()
-			
-			# Obstacles
-			var obstacles_nearby: Array = sh.query_radius_group(global_position, obstacle_sense_range, "obstacles")
-			_sensor_cache["nearby_obstacles_count"] = obstacles_nearby.size()
-			if obstacles_nearby.size() > 0:
-				var nearest_obs: Node = _find_nearest(obstacles_nearby)
-				if nearest_obs != null and nearest_obs.has_method("get_distance_to_surface"):
-					_sensor_cache["nearest_obstacle_distance"] = nearest_obs.get_distance_to_surface(global_position)
-				else:
-					_sensor_cache["nearest_obstacle_distance"] = INF
-			else:
-				_sensor_cache["nearest_obstacle_distance"] = INF
+			_sense_food(sh)
+			_sense_ants(sh)
+			_sense_obstacles(sh)
+			_sense_ant_directions(sh)  # New: Social navigation
+
+
+func _sense_food(sh: SpatialHash) -> void:
+	var foods: Array = sh.query_radius_group(global_position, neighbor_sense_range, "food", self)
+	var available: Array = []
+	for f: Node in foods:
+		if f != null and is_instance_valid(f) and not f.is_queued_for_deletion():
+			if "is_picked_up" in f and not f.is_picked_up:
+				available.append(f)
+	
+	_sensor_cache["nearby_food_count"] = available.size()
+	if available.size() > 0:
+		var nearest: Node = _find_nearest(available)
+		if nearest != null:
+			_sensor_cache["nearest_food"] = nearest
+			_sensor_cache["nearest_food_distance"] = global_position.distance_to(nearest.global_position)
+			_sensor_cache["nearest_food_direction"] = (nearest.global_position - global_position).angle()
+	else:
+		_sensor_cache["nearest_food_distance"] = INF
+
+
+func _sense_ants(sh: SpatialHash) -> void:
+	var ants_nearby: Array = sh.query_radius_group(global_position, neighbor_sense_range, "ants", self)
+	_sensor_cache["nearby_ants_count"] = ants_nearby.size()
+
+
+func _sense_obstacles(sh: SpatialHash) -> void:
+	var obstacles_nearby: Array = sh.query_radius_group(global_position, obstacle_sense_range, "obstacles")
+	_sensor_cache["nearby_obstacles_count"] = obstacles_nearby.size()
+	if obstacles_nearby.size() > 0:
+		var nearest_obs: Node = _find_nearest(obstacles_nearby)
+		if nearest_obs != null and nearest_obs.has_method("get_distance_to_surface"):
+			_sensor_cache["nearest_obstacle_distance"] = nearest_obs.get_distance_to_surface(global_position)
+		else:
+			_sensor_cache["nearest_obstacle_distance"] = INF
+	else:
+		_sensor_cache["nearest_obstacle_distance"] = INF
+
+
+## Sense other ants' directions for social navigation
+## Ants carrying food heading direction X suggests food is in direction X + PI
+## Ants without food heading direction Y might be heading toward food
+func _sense_ant_directions(sh: SpatialHash) -> void:
+	var ants_nearby: Array = sh.query_radius_group(global_position, ant_direction_sense_range, "ants", self)
+	
+	# Weighted direction vectors
+	var food_direction_hint: Vector2 = Vector2.ZERO
+	var search_direction_hint: Vector2 = Vector2.ZERO
+	var carrying_boost: float = SettingsManager.get_setting("ant_direction_carrying_boost")
+	var decay_factor: float = SettingsManager.get_setting("ant_direction_decay")
+	
+	var food_weight_total: float = 0.0
+	var search_weight_total: float = 0.0
+	var carrying_count: int = 0
+	var searching_count: int = 0
+	
+	for ant_node: Node in ants_nearby:
+		if not is_instance_valid(ant_node):
+			continue
+		if ant_node == self:
+			continue
+		
+		# Get ant properties
+		var ant_pos: Vector2 = ant_node.global_position
+		var ant_heading: float = ant_node.heading if "heading" in ant_node else 0.0
+		var ant_carrying: bool = ant_node.carried_item != null if "carried_item" in ant_node else false
+		
+		# Calculate weight based on distance (closer = more influential)
+		var dist: float = global_position.distance_to(ant_pos)
+		var weight: float = pow(decay_factor, dist / ant_direction_sense_range)
+		
+		# Direction this ant is facing
+		var ant_dir: Vector2 = Vector2.from_angle(ant_heading)
+		
+		if ant_carrying:
+			# Ant with food is heading TOWARD nest, so food is in OPPOSITE direction
+			# The direction from this ant back to where it came from
+			var food_hint_dir: Vector2 = -ant_dir  # Opposite of where carrying ant is heading
+			food_direction_hint += food_hint_dir * weight * carrying_boost
+			food_weight_total += weight * carrying_boost
+			carrying_count += 1
+		else:
+			# Ant without food might be heading toward food
+			# Consider if they're moving away from nest (more likely searching for food)
+			if colony != null:
+				var ant_to_nest: Vector2 = colony.nest_position - ant_pos
+				var heading_away_from_nest: bool = ant_dir.dot(ant_to_nest.normalized()) < 0.3
+				
+				if heading_away_from_nest:
+					# This ant is searching and heading away from nest - follow their lead
+					search_direction_hint += ant_dir * weight
+					search_weight_total += weight
+					searching_count += 1
+	
+	# Normalize and store
+	if food_weight_total > 0.01:
+		food_direction_hint /= food_weight_total
+		_sensor_cache["ant_food_hint_direction"] = food_direction_hint.angle()
+		_sensor_cache["ant_food_hint_strength"] = food_direction_hint.length()
+	else:
+		_sensor_cache["ant_food_hint_direction"] = 0.0
+		_sensor_cache["ant_food_hint_strength"] = 0.0
+	
+	if search_weight_total > 0.01:
+		search_direction_hint /= search_weight_total
+		_sensor_cache["ant_search_hint_direction"] = search_direction_hint.angle()
+		_sensor_cache["ant_search_hint_strength"] = search_direction_hint.length()
+	else:
+		_sensor_cache["ant_search_hint_direction"] = 0.0
+		_sensor_cache["ant_search_hint_strength"] = 0.0
+	
+	# Combined hint (weighted average of both signals)
+	var combined_hint: Vector2 = Vector2.ZERO
+	if food_weight_total > 0.01:
+		combined_hint += Vector2.from_angle(_sensor_cache["ant_food_hint_direction"]) * _sensor_cache["ant_food_hint_strength"] * 1.5
+	if search_weight_total > 0.01:
+		combined_hint += Vector2.from_angle(_sensor_cache["ant_search_hint_direction"]) * _sensor_cache["ant_search_hint_strength"]
+	
+	if combined_hint.length() > 0.01:
+		_sensor_cache["ant_direction_hint"] = combined_hint.angle()
+		_sensor_cache["ant_direction_strength"] = minf(combined_hint.length(), 1.0)
+	else:
+		_sensor_cache["ant_direction_hint"] = heading  # Default to current heading
+		_sensor_cache["ant_direction_strength"] = 0.0
+	
+	_sensor_cache["nearby_carrying_count"] = carrying_count
+	_sensor_cache["nearby_searching_count"] = searching_count
 
 
 func _build_context() -> Dictionary:
@@ -567,6 +609,7 @@ func _build_context() -> Dictionary:
 	ctx["path_integrator"] = path_integrator
 	ctx["memory"] = memory
 	ctx["at_nest"] = _was_at_nest
+	ctx["current_state"] = current_state_name
 	return ctx
 
 
@@ -575,15 +618,12 @@ func _process_action_results(results: Array) -> void:
 		if r is not Dictionary:
 			continue
 		
-		# Heading change
 		if r.has("desired_heading"):
 			desired_heading = fmod(r.desired_heading + TAU, TAU)
 		
-		# Speed change
 		if r.has("desired_speed"):
 			speed = r.desired_speed
 		
-		# Pheromone deposit
 		if r.has("deposit_pheromone") and world != null:
 			var fname: String = r.deposit_pheromone
 			var amt: float = r.get("deposit_amount", 1.0)
@@ -593,10 +633,6 @@ func _process_action_results(results: Array) -> void:
 				world.deposit_pheromone(fname, global_position, amt)
 			efficiency_tracker.record_pheromone(amt)
 		
-		# Note: Pickup and Drop are now handled by event triggers
-		# But we still process them here for any behavior-initiated actions
-		
-		# Pickup (behavior-initiated, not event-triggered)
 		if r.has("pickup_target") and r.pickup_target != null and carried_item == null:
 			var target: Node = r.pickup_target
 			if is_instance_valid(target) and not target.is_queued_for_deletion():
@@ -607,7 +643,6 @@ func _process_action_results(results: Array) -> void:
 						carried_weight = picked.weight if "weight" in picked else 1.0
 						picked_up_item.emit(picked)
 		
-		# Drop (behavior-initiated, not event-triggered)
 		if r.get("drop_item", false) and carried_item != null:
 			if r.get("is_delivery", false):
 				_deposit_food_at_nest()
@@ -616,7 +651,7 @@ func _process_action_results(results: Array) -> void:
 					carried_item.drop(global_position)
 				carried_item = null
 				carried_weight = 0.0
-				dropped_item.emit(false)  # was_delivery = false
+				dropped_item.emit(false)
 
 
 func _apply_energy_cost(cost: float) -> void:
