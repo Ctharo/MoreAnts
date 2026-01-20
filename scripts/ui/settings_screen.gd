@@ -72,3 +72,9 @@ func _on_play_pressed() -> void:
 func _on_reset_pressed() -> void:
 	SettingsManager.reset_to_defaults()
 	_load_settings_to_ui()
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed:
+		if event.keycode == KEY_ESCAPE:
+			get_tree().quit()
