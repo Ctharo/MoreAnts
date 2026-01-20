@@ -29,7 +29,7 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="PanelContainer" type="PanelContainer" parent="CenterContainer" unique_id=1098502599]
-custom_minimum_size = Vector2(500, 0)
+custom_minimum_size = Vector2(600, 0)
 layout_mode = 2
 
 [node name="MarginContainer" type="MarginContainer" parent="CenterContainer/PanelContainer" unique_id=1957419892]
@@ -58,76 +58,80 @@ horizontal_alignment = 1
 [node name="HSeparator" type="HSeparator" parent="CenterContainer/PanelContainer/MarginContainer/VBox" unique_id=672132743]
 layout_mode = 2
 
-[node name="ScrollContainer" type="ScrollContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox" unique_id=1826362642]
-custom_minimum_size = Vector2(0, 400)
+[node name="TabContainer" type="TabContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 450)
+layout_mode = 2
+
+[node name="General" type="ScrollContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer"]
 layout_mode = 2
 horizontal_scroll_mode = 0
 
-[node name="SettingsVBox" type="VBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer" unique_id=137257738]
+[node name="SettingsVBox" type="VBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
-[node name="ColonySection" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox" unique_id=807281442]
+[node name="ColonySection" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.4, 0.8, 0.4, 1)
 theme_override_font_sizes/font_size = 16
 text = "Colony Settings"
 
-[node name="InitialAnts" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox" unique_id=744107038]
+[node name="InitialAnts" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/InitialAnts" unique_id=527785823]
+[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/InitialAnts"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Initial Ants"
 
-[node name="InitialAntsSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/InitialAnts" unique_id=100962955]
+[node name="InitialAntsSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/InitialAnts"]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 1.0
 max_value = 500.0
 value = 20.0
 
-[node name="MaxAnts" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox" unique_id=1387324853]
+[node name="MaxAnts" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/MaxAnts" unique_id=150642876]
+[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/MaxAnts"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Max Ants"
 
-[node name="MaxAntsSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/MaxAnts" unique_id=777721462]
+[node name="MaxAntsSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/MaxAnts"]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 1.0
 max_value = 10000.0
 value = 100.0
 
-[node name="SpawnCost" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox" unique_id=348641157]
+[node name="SpawnCost" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/SpawnCost" unique_id=245967652]
+[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/SpawnCost"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Ant Spawn Cost"
 
-[node name="SpawnCostSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/SpawnCost" unique_id=1171225468]
+[node name="SpawnCostSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/SpawnCost"]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 1.0
 step = 0.5
 value = 10.0
 
-[node name="SpawnRate" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox" unique_id=1795571452]
+[node name="SpawnRate" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/SpawnRate" unique_id=878554387]
+[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/SpawnRate"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Spawn Rate (ants/sec)"
 
-[node name="SpawnRateSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/SpawnRate" unique_id=1429496154]
+[node name="SpawnRateSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/SpawnRate"]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 0.1
@@ -135,83 +139,83 @@ max_value = 10.0
 step = 0.1
 value = 0.5
 
-[node name="InitialFood" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox" unique_id=1033024403]
+[node name="InitialFood" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/InitialFood" unique_id=1316363355]
+[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/InitialFood"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Initial Food Stored"
 
-[node name="InitialFoodSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/InitialFood" unique_id=908239316]
+[node name="InitialFoodSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/InitialFood"]
 unique_name_in_owner = true
 layout_mode = 2
 max_value = 1000.0
 step = 10.0
 value = 100.0
 
-[node name="HSeparator2" type="HSeparator" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox" unique_id=811693834]
+[node name="HSeparator2" type="HSeparator" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox"]
 layout_mode = 2
 
-[node name="FoodSection" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox" unique_id=557234392]
+[node name="FoodSection" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.8, 0.8, 0.4, 1)
 theme_override_font_sizes/font_size = 16
 text = "Food Settings"
 
-[node name="ClusterCount" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox" unique_id=400978757]
+[node name="ClusterCount" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/ClusterCount" unique_id=1254262797]
+[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/ClusterCount"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Food Clusters"
 
-[node name="ClusterCountSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/ClusterCount" unique_id=644372830]
+[node name="ClusterCountSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/ClusterCount"]
 unique_name_in_owner = true
 layout_mode = 2
 max_value = 20.0
 value = 6.0
 
-[node name="FoodPerCluster" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox" unique_id=298961210]
+[node name="FoodPerCluster" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/FoodPerCluster" unique_id=1944878266]
+[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/FoodPerCluster"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Food Per Cluster"
 
-[node name="FoodPerClusterSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/FoodPerCluster" unique_id=955309361]
+[node name="FoodPerClusterSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/FoodPerCluster"]
 unique_name_in_owner = true
 layout_mode = 2
 max_value = 1000.0
 step = 10.0
 value = 200.0
 
-[node name="SourcesPerCluster" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox" unique_id=1905663320]
+[node name="SourcesPerCluster" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/SourcesPerCluster" unique_id=1905605898]
+[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/SourcesPerCluster"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Sources Per Cluster"
 
-[node name="SourcesPerClusterSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/SourcesPerCluster" unique_id=848793821]
+[node name="SourcesPerClusterSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/SourcesPerCluster"]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 1.0
 max_value = 50.0
 value = 8.0
 
-[node name="ClusterRadius" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox" unique_id=1135138071]
+[node name="ClusterRadius" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/ClusterRadius" unique_id=1411451875]
+[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/ClusterRadius"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Cluster Radius"
 
-[node name="ClusterRadiusSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/ClusterRadius" unique_id=167700195]
+[node name="ClusterRadiusSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/ClusterRadius"]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 10.0
@@ -219,24 +223,24 @@ max_value = 500.0
 step = 10.0
 value = 100.0
 
-[node name="HSeparator3" type="HSeparator" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox" unique_id=779592357]
+[node name="HSeparator3" type="HSeparator" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox"]
 layout_mode = 2
 
-[node name="WorldSection" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox" unique_id=1373493343]
+[node name="WorldSection" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.4, 0.6, 0.9, 1)
 theme_override_font_sizes/font_size = 16
 text = "World Settings"
 
-[node name="WorldWidth" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox" unique_id=1716283355]
+[node name="WorldWidth" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/WorldWidth" unique_id=2086236942]
+[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/WorldWidth"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "World Width"
 
-[node name="WorldWidthSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/WorldWidth" unique_id=1104358267]
+[node name="WorldWidthSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/WorldWidth"]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 500.0
@@ -244,15 +248,15 @@ max_value = 10000.0
 step = 100.0
 value = 2000.0
 
-[node name="WorldHeight" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox" unique_id=1911990832]
+[node name="WorldHeight" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/WorldHeight" unique_id=1283771764]
+[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/WorldHeight"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "World Height"
 
-[node name="WorldHeightSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/WorldHeight" unique_id=537487199]
+[node name="WorldHeightSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/WorldHeight"]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 500.0
@@ -260,20 +264,37 @@ max_value = 10000.0
 step = 100.0
 value = 2000.0
 
-[node name="TimeScale" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox" unique_id=594487357]
+[node name="TimeScale" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/TimeScale" unique_id=1192856146]
+[node name="Label" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/TimeScale"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Initial Time Scale"
 
-[node name="TimeScaleSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ScrollContainer/SettingsVBox/TimeScale" unique_id=97320847]
+[node name="TimeScaleSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/General/SettingsVBox/TimeScale"]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 0.01
 step = 0.01
-value = 1.01
+value = 1.0
+
+[node name="Behavior Weights" type="ScrollContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="BehaviorVBox" type="VBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/Behavior Weights"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="InfoLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBox/TabContainer/Behavior Weights/BehaviorVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
+theme_override_font_sizes/font_size = 11
+text = "Adjust weights for each behavior state. Higher values = stronger influence."
+autowrap_mode = 2
 
 [node name="HSeparator2" type="HSeparator" parent="CenterContainer/PanelContainer/MarginContainer/VBox" unique_id=1342186398]
 layout_mode = 2
@@ -288,6 +309,12 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 40)
 layout_mode = 2
 text = "Reset Defaults"
+
+[node name="ResetWeightsButton" type="Button" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ButtonsHBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 40)
+layout_mode = 2
+text = "Reset Weights"
 
 [node name="PlayButton" type="Button" parent="CenterContainer/PanelContainer/MarginContainer/VBox/ButtonsHBox" unique_id=637674315]
 unique_name_in_owner = true
