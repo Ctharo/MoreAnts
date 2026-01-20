@@ -40,6 +40,15 @@ var category_colors: Dictionary = {
 ## Debug mode state
 var _debug_mode: bool = false
 
+#region Ant Selection System
+## Currently selected ant (persists until clicked elsewhere)
+var _selected_ant: Node = null
+## Currently hovered ant (temporary, follows mouse)
+var _hovered_ant: Node = null
+## Radius within which to snap selection to nearest ant
+var _selection_snap_radius: float = 30.0
+#endregion
+
 
 func _ready() -> void:
 	camera = $Camera2D
@@ -69,7 +78,7 @@ func _ready() -> void:
 	_spawn_initial_obstacles()
 
 	# Connect colony signals
-	colony.colony_stats_updated.connect(_update_ui)
+	colony.colony_stats_updated.connect(_update_stats_ui)
 
 	# Set initial time scale from settings
 	GameManager.set_time_scale(SettingsManager.get_setting("time_scale"))
@@ -103,10 +112,16 @@ func _apply_settings() -> void:
 func _process(_delta: float) -> void:
 	# Camera controls
 	_handle_camera_input()
+	
+	# Update mouse hover for ant selection
+	_update_ant_hover()
 
-	# Update UI periodically
+	# Update time label EVERY frame for smooth counting
+	_update_time_label()
+
+	# Update other UI periodically (less frequently)
 	if Engine.get_process_frames() % 10 == 0:
-		_update_ui()
+		_update_stats_ui()
 
 	# Update cost panel if visible
 	if cost_panel.visible and Engine.get_process_frames() % 30 == 0:
@@ -137,6 +152,73 @@ func _handle_camera_input() -> void:
 	camera.zoom = camera.zoom.clamp(Vector2(0.1, 0.1), Vector2(2.0, 2.0))
 
 
+#region Ant Selection System
+func _update_ant_hover() -> void:
+	## Update which ant is being hovered based on mouse position
+	var mouse_world_pos: Vector2 = _get_mouse_world_position()
+	
+	# Find nearest ant within snap radius (adjusted for zoom)
+	var snap_radius: float = _selection_snap_radius / camera.zoom.x
+	var nearest_ant: Node = colony.find_nearest_ant(mouse_world_pos, snap_radius)
+	
+	# Update hover state
+	if nearest_ant != _hovered_ant:
+		# Clear previous hover
+		if _hovered_ant != null and is_instance_valid(_hovered_ant):
+			_hovered_ant.debug_hovered = false
+		
+		# Set new hover (but not if it's already selected)
+		_hovered_ant = nearest_ant
+		if _hovered_ant != null and _hovered_ant != _selected_ant:
+			_hovered_ant.debug_hovered = true
+
+
+func _get_mouse_world_position() -> Vector2:
+	## Convert mouse screen position to world position
+	var mouse_screen: Vector2 = get_viewport().get_mouse_position()
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	var viewport_center: Vector2 = viewport_size / 2.0
+	
+	# Offset from center, scaled by zoom
+	var offset: Vector2 = (mouse_screen - viewport_center) / camera.zoom
+	return camera.position + offset
+
+
+func _select_ant(ant: Node) -> void:
+	## Select an ant for persistent debug display
+	# Clear previous selection
+	if _selected_ant != null and is_instance_valid(_selected_ant):
+		_selected_ant.debug_selected = false
+	
+	# Set new selection
+	_selected_ant = ant
+	if _selected_ant != null:
+		_selected_ant.debug_selected = true
+		# Also clear hover on this ant since it's now selected
+		_selected_ant.debug_hovered = false
+
+
+func _clear_selection() -> void:
+	## Clear the current ant selection
+	if _selected_ant != null and is_instance_valid(_selected_ant):
+		_selected_ant.debug_selected = false
+	_selected_ant = null
+
+
+func _handle_ant_click(mouse_world_pos: Vector2) -> void:
+	## Handle a click for ant selection
+	var snap_radius: float = _selection_snap_radius / camera.zoom.x
+	var clicked_ant: Node = colony.find_nearest_ant(mouse_world_pos, snap_radius)
+	
+	if clicked_ant != null:
+		# Clicked on an ant - select it
+		_select_ant(clicked_ant)
+	else:
+		# Clicked on empty space - clear selection
+		_clear_selection()
+#endregion
+
+
 func _spawn_initial_food() -> void:
 	var cluster_count: int = int(SettingsManager.get_setting("food_cluster_count"))
 	var food_per_cluster: float = SettingsManager.get_setting("food_per_cluster")
@@ -161,14 +243,19 @@ func _spawn_initial_food() -> void:
 		world.spawn_food_cluster(pos, sources_per_cluster, cluster_radius, food_per_cluster)
 
 
-func _update_ui() -> void:
+func _update_time_label() -> void:
+	## Update only the time label (called every frame for smooth counting)
+	sim_time_label.text = "Time: %.1fs (x%.1f)" % [GameManager.simulation_time, GameManager.time_scale]
+
+
+func _update_stats_ui() -> void:
+	## Update stat labels (called less frequently)
 	var stats: Dictionary = colony.get_stats()
 
 	ant_count_label.text = "Ants: %d / %d" % [stats.ant_count, stats.max_ants]
 	food_stored_label.text = "Food Stored: %.0f" % stats.food_stored
 	food_collected_label.text = "Total Collected: %.0f" % stats.total_food_collected
 	efficiency_label.text = "Efficiency: %.2f food/s" % stats.colony_efficiency
-	sim_time_label.text = "Time: %.1fs (x%.1f)" % [GameManager.simulation_time, GameManager.time_scale]
 
 	# Show state counts
 	var state_counts: Dictionary = stats.get("state_counts", {})
@@ -324,6 +411,14 @@ func _on_back_to_settings_pressed() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# Handle mouse input for ant selection
+	if event is InputEventMouseButton:
+		if event.pressed:
+			if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
+				var mouse_world_pos: Vector2 = _get_mouse_world_position()
+				_handle_ant_click(mouse_world_pos)
+	
+	# Handle keyboard input
 	if event is InputEventKey and event.pressed:
 		match event.keycode:
 			KEY_SPACE:

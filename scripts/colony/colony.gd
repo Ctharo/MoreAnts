@@ -193,6 +193,24 @@ func _refill_ants_at_nest(delta: float) -> void:
 					ant.refill_energy(refill_amount)
 
 
+## Find the nearest ant to a world position within a given radius
+## Returns null if no ant is within the radius
+func find_nearest_ant(world_pos: Vector2, max_radius: float) -> Node:
+	var nearest: Node = null
+	var nearest_dist_sq: float = max_radius * max_radius
+	
+	for ant: Node in ants:
+		if ant == null or not is_instance_valid(ant):
+			continue
+		
+		var dist_sq: float = world_pos.distance_squared_to(ant.global_position)
+		if dist_sq < nearest_dist_sq:
+			nearest_dist_sq = dist_sq
+			nearest = ant
+	
+	return nearest
+
+
 func get_stats() -> Dictionary:
 	var total_energy: float = 0.0
 	var total_food_carried: float = 0.0
@@ -242,12 +260,23 @@ func _draw() -> void:
 		var ant_pos: Vector2 = ant.global_position - global_position
 		var ant_color: Color = colony_color
 		
-		# Color based on state if debug enabled
-		if Ant.debug_show_state:
+		# Check if this ant should show individual debug
+		var show_individual_debug: bool = ant.should_show_debug() if ant.has_method("should_show_debug") else false
+		
+		# Color based on state if global debug enabled OR individual debug
+		if Ant.debug_show_state or show_individual_debug:
 			var state_name: String = ant.current_state_name if "current_state_name" in ant else ""
 			ant_color = _state_colors.get(state_name, colony_color)
 		elif ant.energy < ant.max_energy * 0.3:
 			ant_color = Color.ORANGE_RED  # Low energy warning
+		
+		# Draw selection/hover indicator
+		if ant.debug_selected:
+			# Draw selection ring
+			draw_arc(ant_pos, 8.0, 0, TAU, 16, Color.WHITE, 2.0)
+		elif ant.debug_hovered:
+			# Draw hover ring (thinner)
+			draw_arc(ant_pos, 7.0, 0, TAU, 16, Color(1.0, 1.0, 1.0, 0.5), 1.0)
 		
 		# Draw ant body
 		draw_circle(ant_pos, 3.0, ant_color)
@@ -264,13 +293,17 @@ func _draw() -> void:
 			draw_circle(ant_pos, food_radius, Color.YELLOW_GREEN)
 			draw_arc(ant_pos, food_radius, 0, TAU, 12, Color.YELLOW_GREEN.darkened(0.3), 1.0)
 		
-		# Debug: Draw sensor range
-		if Ant.debug_show_sensors:
+		# Debug: Draw sensor range (global OR individual)
+		if Ant.debug_show_sensors or show_individual_debug:
 			_draw_ant_debug_sensors(ant, ant_pos)
 		
-		# Debug: Draw pheromone samples
-		if Ant.debug_show_pheromone_samples:
+		# Debug: Draw pheromone samples (global OR individual)
+		if Ant.debug_show_pheromone_samples or show_individual_debug:
 			_draw_ant_debug_pheromones(ant, ant_pos)
+		
+		# Draw ant info panel for selected/hovered ants
+		if show_individual_debug:
+			_draw_ant_info_panel(ant, ant_pos)
 
 
 func _draw_ant_debug_sensors(ant: Node, ant_pos: Vector2) -> void:
@@ -335,8 +368,63 @@ func _draw_ant_debug_pheromones(ant: Node, ant_pos: Vector2) -> void:
 		var col: Color = Color(0.0, 1.0, 0.0, 0.3 + normalized * 0.7)
 		
 		draw_circle(local_pos, radius, col)
-		
-		# Draw value text if significant
-		if val > 0.1:
-			# Can't easily draw text in _draw, so use circle size to indicate
-			pass
+
+
+func _draw_ant_info_panel(ant: Node, ant_pos: Vector2) -> void:
+	## Draw a small info panel next to the selected/hovered ant
+	var panel_offset: Vector2 = Vector2(15, -50)
+	var panel_pos: Vector2 = ant_pos + panel_offset
+	var line_height: float = 12.0
+	var panel_width: float = 100.0
+	var line_count: int = 6
+	var panel_height: float = line_height * line_count + 8.0
+	
+	# Draw panel background
+	var panel_rect: Rect2 = Rect2(panel_pos - Vector2(4, 4), Vector2(panel_width + 8, panel_height))
+	draw_rect(panel_rect, Color(0.0, 0.0, 0.0, 0.7))
+	draw_rect(panel_rect, Color(0.5, 0.5, 0.5, 0.5), false, 1.0)
+	
+	# Draw info lines using simple shapes (can't draw text in _draw easily)
+	# Instead, we'll draw colored bars for energy and state indicators
+	
+	var y_offset: float = 0.0
+	
+	# Energy bar
+	var energy_percent: float = ant.energy / ant.max_energy if ant.max_energy > 0 else 0.0
+	var energy_bar_width: float = panel_width * energy_percent
+	var energy_color: Color = Color.GREEN if energy_percent > 0.5 else (Color.YELLOW if energy_percent > 0.2 else Color.RED)
+	draw_rect(Rect2(panel_pos + Vector2(0, y_offset), Vector2(energy_bar_width, 8)), energy_color)
+	draw_rect(Rect2(panel_pos + Vector2(0, y_offset), Vector2(panel_width, 8)), Color.WHITE, false, 1.0)
+	y_offset += line_height
+	
+	# State color indicator
+	var state_name: String = ant.current_state_name if "current_state_name" in ant else ""
+	var state_color: Color = _state_colors.get(state_name, Color.GRAY)
+	draw_rect(Rect2(panel_pos + Vector2(0, y_offset), Vector2(panel_width, 8)), state_color)
+	y_offset += line_height
+	
+	# Carrying indicator
+	var carrying: bool = ant.carried_item != null
+	var carry_color: Color = Color.YELLOW_GREEN if carrying else Color.DARK_GRAY
+	draw_rect(Rect2(panel_pos + Vector2(0, y_offset), Vector2(20 if carrying else 10, 8)), carry_color)
+	y_offset += line_height
+	
+	# Speed indicator (as bar)
+	var speed_percent: float = ant.speed / ant.base_speed if ant.base_speed > 0 else 0.0
+	var speed_bar_width: float = panel_width * clampf(speed_percent, 0.0, 1.0)
+	draw_rect(Rect2(panel_pos + Vector2(0, y_offset), Vector2(speed_bar_width, 8)), Color.CORNFLOWER_BLUE)
+	draw_rect(Rect2(panel_pos + Vector2(0, y_offset), Vector2(panel_width, 8)), Color.WHITE, false, 1.0)
+	y_offset += line_height
+	
+	# Direction indicator (small arrow showing heading)
+	var arrow_center: Vector2 = panel_pos + Vector2(panel_width / 2, y_offset + 8)
+	var arrow_length: float = 15.0
+	var arrow_end: Vector2 = arrow_center + Vector2.from_angle(ant.heading) * arrow_length
+	draw_line(arrow_center, arrow_end, Color.WHITE, 2.0)
+	# Arrowhead
+	var arrow_head_angle: float = 0.5
+	var arrow_head_length: float = 5.0
+	var head_left: Vector2 = arrow_end - Vector2.from_angle(ant.heading - arrow_head_angle) * arrow_head_length
+	var head_right: Vector2 = arrow_end - Vector2.from_angle(ant.heading + arrow_head_angle) * arrow_head_length
+	draw_line(arrow_end, head_left, Color.WHITE, 2.0)
+	draw_line(arrow_end, head_right, Color.WHITE, 2.0)

@@ -84,6 +84,11 @@ static var debug_show_pheromone_samples: bool = false  ## Show pheromone antenna
 static var debug_show_state: bool = false  ## Color ants by state
 #endregion
 
+#region Per-Ant Debug (for individual selection)
+var debug_selected: bool = false  ## This specific ant is selected for debug
+var debug_hovered: bool = false  ## This specific ant is being hovered
+#endregion
+
 #region Debug Data (per-ant data for visualization)
 var _debug_pheromone_left: float = 0.0
 var _debug_pheromone_center: float = 0.0
@@ -471,7 +476,7 @@ func _update_sensors() -> void:
 			_sensor_cache["pheromone_" + fname] = samples
 			
 			# Store debug data for primary pheromone (food_trail for Search, home_trail for Return)
-			if debug_show_pheromone_samples:
+			if debug_show_pheromone_samples or debug_selected or debug_hovered:
 				if (current_state_name == "Search" and fname == "food_trail") or \
 				   (current_state_name == "Return" and fname == "home_trail"):
 					_debug_pheromone_left = samples.get("left", 0.0)
@@ -720,6 +725,11 @@ func stop_movement() -> void:
 
 func resume_movement() -> void:
 	speed = base_speed
+
+
+## Check if this ant should show debug (selected, hovered, or global debug enabled)
+func should_show_debug() -> bool:
+	return debug_selected or debug_hovered
 
 
 #region Debug Visualization Static Methods
