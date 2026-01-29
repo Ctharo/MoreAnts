@@ -446,7 +446,6 @@ func initialize(p_colony: Node, p_world: Node, p_index: int, p_behavior: Behavio
 func decision_tick() -> void:
 	if not GameManager.is_ant_cohort(ant_index):
 		return
-	
 	_apply_energy_cost(GameManager.get_action_cost("idle"))
 	_update_sensors()
 	
@@ -683,9 +682,11 @@ func _process_action_results(results: Array) -> void:
 
 
 func _apply_energy_cost(cost: float) -> void:
-	energy -= cost
-	efficiency_tracker.record_energy(cost)
-	GameManager.global_stats.total_energy_spent += cost
+	return
+	#FIXME Energy is disabled
+	#energy -= cost
+	#efficiency_tracker.record_energy(cost)
+	#GameManager.global_stats.total_energy_spent += cost
 
 
 func _find_nearest(entities: Array) -> Node:
