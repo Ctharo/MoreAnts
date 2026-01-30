@@ -23,10 +23,18 @@ var defaults: Dictionary = {
 	"world_width": 2000.0,
 	"world_height": 2000.0,
 	"time_scale": 1.0,
+	# Ant sensing ranges
+	"sensor_distance": 90.0,          # Pheromone/scent sensing range
+	"sight_sense_range": 60.0,        # Visual detection range for food/ants
+	"obstacle_sense_range": 35.0,     # Obstacle detection range
+	"ant_direction_sense_range": 80.0, # Social navigation range
+	"pickup_range": 20.0,             # Item pickup range
 	# Ant direction sensing (social navigation)
-	"ant_direction_sense_range": 80.0,
 	"ant_direction_carrying_boost": 2.0,
 	"ant_direction_decay": 0.5,
+	# Ant movement
+	"ant_base_speed": 80.0,
+	"ant_max_turn_rate": 9.42,  # PI * 3.0
 }
 
 ## Default behavior weights per state
@@ -90,19 +98,19 @@ func _ready() -> void:
 ## Load settings from file or use defaults
 func load_settings() -> void:
 	var err: Error = _config.load(SETTINGS_PATH)
-	
+
 	if err != OK:
 		# File doesn't exist or is corrupted, use defaults
 		settings = defaults.duplicate()
 		behavior_weights = default_behavior_weights.duplicate(true)
 		save_settings()
 		return
-	
+
 	# Load each setting, falling back to default if not present
 	settings.clear()
 	for key: String in defaults:
 		settings[key] = _config.get_value("settings", key, defaults[key])
-	
+
 	# Load behavior weights
 	behavior_weights.clear()
 	for state_name: String in default_behavior_weights:
@@ -110,7 +118,7 @@ func load_settings() -> void:
 			behavior_weights[state_name] = _config.get_value("behavior_weights", state_name, {})
 		else:
 			behavior_weights[state_name] = default_behavior_weights[state_name].duplicate()
-	
+
 	settings_changed.emit()
 
 
@@ -118,15 +126,15 @@ func load_settings() -> void:
 func save_settings() -> void:
 	for key: String in settings:
 		_config.set_value("settings", key, settings[key])
-	
+
 	# Save behavior weights
 	for state_name: String in behavior_weights:
 		_config.set_value("behavior_weights", state_name, behavior_weights[state_name])
-	
+
 	var err: Error = _config.save(SETTINGS_PATH)
 	if err != OK:
 		push_error("Failed to save settings: %s" % error_string(err))
-	
+
 	settings_changed.emit()
 
 

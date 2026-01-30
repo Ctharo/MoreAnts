@@ -128,15 +128,26 @@ func _ready() -> void:
 	add_to_group("ants")
 	efficiency_tracker = AntEfficiencyTracker.new()
 
+	# Load all sensing and movement settings
+	_load_settings()
+
 	heading = randf() * TAU
 	desired_heading = heading
 	_goal_heading = heading
 	speed = base_speed
 
-	# Load ant direction sense range from settings
-	ant_direction_sense_range = SettingsManager.get_setting("ant_direction_sense_range")
-
 	_connect_event_handlers()
+
+
+## Load sensing and movement parameters from SettingsManager
+func _load_settings() -> void:
+	sensor_distance = SettingsManager.get_setting("sensor_distance")
+	sight_sense_range = SettingsManager.get_setting("sight_sense_range")
+	obstacle_sense_range = SettingsManager.get_setting("obstacle_sense_range")
+	ant_direction_sense_range = SettingsManager.get_setting("ant_direction_sense_range")
+	pickup_range = SettingsManager.get_setting("pickup_range")
+	base_speed = SettingsManager.get_setting("ant_base_speed")
+	max_turn_rate = SettingsManager.get_setting("ant_max_turn_rate")
 
 
 func _connect_event_handlers() -> void:
