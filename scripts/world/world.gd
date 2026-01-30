@@ -96,7 +96,7 @@ func _rebuild_spatial_hash() -> void:
 		elif _is_food_available(food_sources[j]):
 			spatial_hash.insert(food_sources[j])
 		j -= 1
-	
+
 	# Add all obstacles
 	var k: int = obstacles.size() - 1
 	while k >= 0:
@@ -274,7 +274,7 @@ func spawn_wall(start: Vector2, end: Vector2, thickness: float = 10.0) -> Node:
 	var center: Vector2 = (start + end) / 2.0
 	var length: float = start.distance_to(end)
 	var angle: float = (end - start).angle()
-	
+
 	var ObstacleScript: Script = load("res://scripts/entities/obstacle.gd")
 	var obstacle: Node = ObstacleScript.new()
 	obstacle.global_position = center
@@ -316,16 +316,16 @@ func get_obstacle_avoidance(pos: Vector2, heading: float, sense_distance: float)
 		"avoidance_heading": heading,
 		"distance": INF,
 	}
-	
+
 	# Sample points ahead in a cone
 	var sample_angles: Array[float] = [0.0, -0.3, 0.3, -0.6, 0.6]  # Center, left, right
 	var nearest_block_dist: float = INF
 	var block_direction: float = 0.0
-	
+
 	for angle_offset: float in sample_angles:
 		var sample_angle: float = heading + angle_offset
 		var sample_pos: Vector2 = pos + Vector2.from_angle(sample_angle) * sense_distance
-		
+
 		var nearby: Array = query_obstacles_near(sample_pos, 20.0)
 		for obs: Node in nearby:
 			if not is_instance_valid(obs):
@@ -337,14 +337,14 @@ func get_obstacle_avoidance(pos: Vector2, heading: float, sense_distance: float)
 					block_direction = angle_offset
 					result.blocked = true
 					result.distance = dist
-	
+
 	if result.blocked:
 		# Steer away from the blocked direction
 		if block_direction <= 0:
 			result.avoidance_heading = heading + PI / 3  # Turn right
 		else:
 			result.avoidance_heading = heading - PI / 3  # Turn left
-	
+
 	return result
 #endregion
 
@@ -352,7 +352,7 @@ func get_obstacle_avoidance(pos: Vector2, heading: float, sense_distance: float)
 func _draw() -> void:
 	# Draw world bounds
 	draw_rect(Rect2(0, 0, world_width, world_height), Color(0.2, 0.2, 0.2), false, 2.0)
-	
+
 	# Draw pheromone fields
 	if _show_pheromones:
 		_draw_pheromones()
@@ -362,7 +362,7 @@ func _draw_pheromones() -> void:
 	for field_name: String in pheromone_fields:
 		var field: PheromoneField = pheromone_fields[field_name]
 		var cell_size: float = field.cell_size
-		
+
 		for y: int in range(field.height):
 			for x: int in range(field.width):
 				var value: float = field.get_at(x, y)
@@ -372,11 +372,11 @@ func _draw_pheromones() -> void:
 					var intensity: float = clampf(normalized, 0.0, 1.0)
 					var draw_color: Color = field.color
 					draw_color.a = intensity * 0.8
-					
+
 					var rect: Rect2 = Rect2(
-						x * cell_size, 
-						y * cell_size, 
-						cell_size, 
+						x * cell_size,
+						y * cell_size,
+						cell_size,
 						cell_size
 					)
 					draw_rect(rect, draw_color, true)

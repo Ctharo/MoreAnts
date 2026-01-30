@@ -73,7 +73,7 @@ func _ready() -> void:
 
 	# Spawn initial food based on settings
 	_spawn_initial_food()
-	
+
 	# Spawn some initial obstacles
 	_spawn_initial_obstacles()
 
@@ -112,7 +112,7 @@ func _apply_settings() -> void:
 func _process(_delta: float) -> void:
 	# Camera controls
 	_handle_camera_input()
-	
+
 	# Update mouse hover for ant selection
 	_update_ant_hover()
 
@@ -156,17 +156,17 @@ func _handle_camera_input() -> void:
 func _update_ant_hover() -> void:
 	## Update which ant is being hovered based on mouse position
 	var mouse_world_pos: Vector2 = _get_mouse_world_position()
-	
+
 	# Find nearest ant within snap radius (adjusted for zoom)
 	var snap_radius: float = _selection_snap_radius / camera.zoom.x
 	var nearest_ant: Node = colony.find_nearest_ant(mouse_world_pos, snap_radius)
-	
+
 	# Update hover state
 	if nearest_ant != _hovered_ant:
 		# Clear previous hover
 		if _hovered_ant != null and is_instance_valid(_hovered_ant):
 			_hovered_ant.debug_hovered = false
-		
+
 		# Set new hover (but not if it's already selected)
 		_hovered_ant = nearest_ant
 		if _hovered_ant != null and _hovered_ant != _selected_ant:
@@ -178,7 +178,7 @@ func _get_mouse_world_position() -> Vector2:
 	var mouse_screen: Vector2 = get_viewport().get_mouse_position()
 	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
 	var viewport_center: Vector2 = viewport_size / 2.0
-	
+
 	# Offset from center, scaled by zoom
 	var offset: Vector2 = (mouse_screen - viewport_center) / camera.zoom
 	return camera.position + offset
@@ -189,7 +189,7 @@ func _select_ant(ant: Node) -> void:
 	# Clear previous selection
 	if _selected_ant != null and is_instance_valid(_selected_ant):
 		_selected_ant.debug_selected = false
-	
+
 	# Set new selection
 	_selected_ant = ant
 	if _selected_ant != null:
@@ -209,7 +209,7 @@ func _handle_ant_click(mouse_world_pos: Vector2) -> void:
 	## Handle a click for ant selection
 	var snap_radius: float = _selection_snap_radius / camera.zoom.x
 	var clicked_ant: Node = colony.find_nearest_ant(mouse_world_pos, snap_radius)
-	
+
 	if clicked_ant != null:
 		# Clicked on an ant - select it
 		_select_ant(clicked_ant)
@@ -417,7 +417,7 @@ func _input(event: InputEvent) -> void:
 			if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
 				var mouse_world_pos: Vector2 = _get_mouse_world_position()
 				_handle_ant_click(mouse_world_pos)
-	
+
 	# Handle keyboard input
 	if event is InputEventKey and event.pressed:
 		match event.keycode:
@@ -453,12 +453,12 @@ func _on_spawn_obstacle_pressed() -> void:
 		randf_range(300, world.world_width - 300),
 		randf_range(300, world.world_height - 300)
 	)
-	
+
 	# Avoid spawning too close to nest
 	var nest_pos: Vector2 = colony.nest_position
 	if pos.distance_to(nest_pos) < 150:
 		pos = nest_pos + (pos - nest_pos).normalized() * 200
-	
+
 	# Random shape
 	if randf() > 0.5:
 		world.spawn_obstacle_circle(pos, randf_range(20, 50))
@@ -472,7 +472,7 @@ func _spawn_initial_obstacles() -> void:
 	var world_w: float = world.world_width
 	var world_h: float = world.world_height
 	var center: Vector2 = Vector2(world_w / 2.0, world_h / 2.0)
-	
+
 	# Create a ring of obstacles around the nest (with gaps for ants to pass)
 	var ring_radius: float = 200.0
 	var num_obstacles: int = 6
@@ -483,13 +483,13 @@ func _spawn_initial_obstacles() -> void:
 			continue
 		var pos: Vector2 = center + Vector2(cos(angle), sin(angle)) * ring_radius
 		world.spawn_obstacle_circle(pos, randf_range(25, 40))
-	
+
 	# Add some random obstacles in the outer areas
 	for i: int in range(8):
 		var angle: float = randf() * TAU
 		var dist: float = randf_range(400, minf(world_w, world_h) * 0.4)
 		var pos: Vector2 = center + Vector2(cos(angle), sin(angle)) * dist
-		
+
 		if randf() > 0.5:
 			world.spawn_obstacle_circle(pos, randf_range(20, 45))
 		else:

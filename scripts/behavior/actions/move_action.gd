@@ -58,7 +58,7 @@ func _get_cost_category() -> String:
 func _execute_internal(ant: Node, context: Dictionary) -> Dictionary:
 	var desired_heading: float = context.get("heading", 0.0)
 	var base_speed: float = context.get("base_speed", 100.0)
-	
+
 	match move_mode:
 		MoveMode.FOLLOW_PHEROMONE:
 			desired_heading = _calculate_pheromone_heading(context, true)
@@ -83,11 +83,11 @@ func _execute_internal(ant: Node, context: Dictionary) -> Dictionary:
 				desired_heading = context.get("nearest_ant_direction") + PI
 		MoveMode.WEIGHTED_BLEND:
 			desired_heading = _calculate_blended_heading(context)
-	
+
 	desired_heading = fmod(desired_heading + TAU, TAU)
-	
+
 	var energy_cost: float = base_energy_cost * speed_multiplier
-	
+
 	return {
 		"success": true,
 		"energy_cost": energy_cost,
@@ -99,44 +99,48 @@ func _execute_internal(ant: Node, context: Dictionary) -> Dictionary:
 func _calculate_pheromone_heading(context: Dictionary, follow: bool) -> float:
 	var samples: Dictionary = context.get("pheromone_" + pheromone_name, {})
 	var current_heading: float = context.get("heading", 0.0)
-	
+
 	if samples.is_empty():
 		return _calculate_random_heading(context)
-	
+
 	var left: float = samples.get("left", 0.0)
 	var center: float = samples.get("center", 0.0)
 	var right: float = samples.get("right", 0.0)
 	var total: float = left + center + right
-	
+
 	# Use lower threshold for better sensitivity
 	if total < PHEROMONE_MIN_THRESHOLD:
 		return _calculate_random_heading(context)
-	
+
 	var sensor_angle: float = PI / 6
 	var turn_amount: float = 0.0
-	
+
 	if follow:
 		# Improved gradient following - compare left vs right more directly
 		var left_weight: float = left / total
 		var right_weight: float = right / total
 		var center_weight: float = center / total
-		
-		# Stronger response to gradient differences
+
+		# Gradient difference determines turn direction
 		var diff: float = right_weight - left_weight
-		
-		# Scale turn by how strong the gradient is
-		var gradient_strength: float = absf(diff) * 2.0
-		
-		# If center is strongest, go straight with slight bias
+
+		# Gradient strength: how confident we are in the direction (0-1 range)
+		# Strong gradient = clear direction, weak gradient = more exploration
+		var gradient_strength: float = clampf(absf(diff) * 2.0, 0.0, 1.0)
+
+		# If center is strongest, go mostly straight with slight bias toward gradient
 		if center_weight > left_weight and center_weight > right_weight:
-			turn_amount = diff * sensor_angle * 1.5
+			turn_amount = diff * sensor_angle * 1.5 * gradient_strength
 		else:
 			# Turn more aggressively toward the stronger side
-			turn_amount = diff * sensor_angle * 3.0
-		
-		# Add small random component to prevent getting stuck
-		turn_amount += randf_range(-0.03, 0.03)
-		
+			# Scale by gradient strength - weak gradients get smaller turns
+			turn_amount = diff * sensor_angle * 3.0 * (0.5 + gradient_strength * 0.5)
+
+		# Add random exploration inversely proportional to gradient strength
+		# Strong gradient = follow it closely, weak gradient = explore more
+		var exploration_factor: float = 1.0 - gradient_strength
+		turn_amount += randf_range(-0.1, 0.1) * exploration_factor
+
 		# Clamp maximum turn
 		turn_amount = clampf(turn_amount, -sensor_angle * 2.0, sensor_angle * 2.0)
 	else:
@@ -148,7 +152,7 @@ func _calculate_pheromone_heading(context: Dictionary, follow: bool) -> float:
 		elif center > left and center > right:
 			# Center is strongest, turn randomly left or right
 			turn_amount = sensor_angle * 0.5 * (1.0 if randf() > 0.5 else -1.0)
-	
+
 	return current_heading + turn_amount
 
 
@@ -163,7 +167,7 @@ func _calculate_blended_heading(context: Dictionary) -> float:
 	var total_weight: float = 0.0
 	var weighted_x: float = 0.0
 	var weighted_y: float = 0.0
-	
+
 	# Get weights - either from settings or from blend_weights
 	var weights: Dictionary = blend_weights.duplicate()
 	if use_settings_weights:
@@ -171,27 +175,27 @@ func _calculate_blended_heading(context: Dictionary) -> float:
 		var settings_weights: Dictionary = SettingsManager.get_behavior_weights(state_name)
 		if not settings_weights.is_empty():
 			weights = settings_weights
-	
+
 	# Pheromone influence
 	var pheromone_w: float = weights.get("pheromone", 0.0)
 	if pheromone_w > 0.001:
 		var samples: Dictionary = context.get("pheromone_" + pheromone_name, {})
 		var pheromone_total: float = samples.get("total", 0.0)
-		
+
 		# Only apply pheromone influence if there's a meaningful signal
 		if pheromone_total > PHEROMONE_MIN_THRESHOLD:
 			var pheromone_heading: float = _calculate_pheromone_heading(context, true)
 			var w: float = pheromone_w
-			
+
 			# Boost pheromone weight based on signal strength
 			# But cap it to prevent over-weighting
 			var boost: float = minf(pheromone_total / 3.0, 2.0)
 			w *= (1.0 + boost * 0.5)
-			
+
 			weighted_x += cos(pheromone_heading) * w
 			weighted_y += sin(pheromone_heading) * w
 			total_weight += w
-	
+
 	# Random walk influence
 	var random_w: float = weights.get("random", 0.0)
 	if random_w > 0.001:
@@ -199,7 +203,7 @@ func _calculate_blended_heading(context: Dictionary) -> float:
 		weighted_x += cos(random_heading) * random_w
 		weighted_y += sin(random_heading) * random_w
 		total_weight += random_w
-	
+
 	# Nest influence (toward or away based on sign)
 	var nest_w: float = weights.get("nest", 0.0)
 	if absf(nest_w) > 0.001:
@@ -207,57 +211,57 @@ func _calculate_blended_heading(context: Dictionary) -> float:
 		weighted_x += cos(nest_dir) * nest_w
 		weighted_y += sin(nest_dir) * nest_w
 		total_weight += absf(nest_w)
-	
+
 	# Food influence
 	var food_w: float = weights.get("food", 0.0)
 	if food_w > 0.001 and context.has("nearest_food_direction"):
 		var food_dir: float = context.get("nearest_food_direction")
 		var food_dist: float = context.get("nearest_food_distance", INF)
-		
+
 		# Stronger food influence when closer
 		var proximity_boost: float = 1.0
 		if food_dist < 100.0:
 			proximity_boost = 2.0
 		elif food_dist < 50.0:
 			proximity_boost = 3.0
-		
+
 		weighted_x += cos(food_dir) * food_w * proximity_boost
 		weighted_y += sin(food_dir) * food_w * proximity_boost
 		total_weight += food_w * proximity_boost
-	
+
 	# Ant direction influence (social navigation)
 	var ant_dir_w: float = weights.get("ant_direction", 0.0)
 	if ant_dir_w > 0.001:
 		var ant_hint_strength: float = context.get("ant_direction_strength", 0.0)
-		
+
 		if ant_hint_strength > 0.01:
 			var ant_hint_dir: float = context.get("ant_direction_hint", current_heading)
 			var effective_w: float = ant_dir_w * ant_hint_strength
-			
+
 			weighted_x += cos(ant_hint_dir) * effective_w
 			weighted_y += sin(ant_hint_dir) * effective_w
 			total_weight += effective_w
-	
+
 	# Colony proximity consideration for trail evaluation
 	var colony_prox_w: float = weights.get("colony_proximity", 0.0)
 	if absf(colony_prox_w) > 0.001:
 		var nest_dir: float = context.get("nest_direction", current_heading)
 		var samples: Dictionary = context.get("pheromone_" + pheromone_name, {})
 		var has_trail: bool = samples.get("total", 0.0) > PHEROMONE_MIN_THRESHOLD
-		
+
 		if has_trail:
 			var trail_heading: float = _calculate_pheromone_heading(context, true)
 			var trail_to_nest_alignment: float = cos(trail_heading - nest_dir)
 			var alignment_factor: float = trail_to_nest_alignment * colony_prox_w
-			
+
 			if alignment_factor > 0.1:
 				weighted_x += cos(trail_heading) * absf(colony_prox_w) * 0.5
 				weighted_y += sin(trail_heading) * absf(colony_prox_w) * 0.5
 				total_weight += absf(colony_prox_w) * 0.5
-	
+
 	if total_weight < 0.001:
 		return current_heading
-	
+
 	return atan2(weighted_y, weighted_x)
 
 

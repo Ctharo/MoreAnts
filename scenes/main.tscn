@@ -54,7 +54,7 @@ text = "Efficiency: 0.00 food/s"
 layout_mode = 2
 text = "Time: 0.0s"
 
-[node name="StateCounts" type="Label" parent="UI/StatsPanel/VBox"]
+[node name="StateCounts" type="Label" parent="UI/StatsPanel/VBox" unique_id=1416541682]
 layout_mode = 2
 theme_override_font_sizes/font_size = 11
 text = "States: Sea:0, Ret:0, Res:0"
@@ -85,17 +85,17 @@ text = "Spawn Food (F)"
 layout_mode = 2
 text = "Show Efficiency Panel (E)"
 
-[node name="ToggleDebug" type="Button" parent="UI/StatsPanel/VBox"]
+[node name="ToggleDebug" type="Button" parent="UI/StatsPanel/VBox" unique_id=1242274638]
 layout_mode = 2
 text = "Show Debug (D)"
 
-[node name="DebugHelp" type="Label" parent="UI/StatsPanel/VBox"]
+[node name="DebugHelp" type="Label" parent="UI/StatsPanel/VBox" unique_id=1444238975]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
 theme_override_font_sizes/font_size = 10
 text = "1=Sensors, 2=Pheromones, 3=States"
 
-[node name="BackToSettings" type="Button" parent="UI/StatsPanel/VBox"]
+[node name="BackToSettings" type="Button" parent="UI/StatsPanel/VBox" unique_id=2141084004]
 layout_mode = 2
 text = "Back to Settings (Esc)"
 
