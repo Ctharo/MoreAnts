@@ -55,6 +55,7 @@ func _grid_to_index(x: int, y: int) -> int:
 
 ## Get value at grid position
 func get_at(x: int, y: int) -> float:
+	#TODO Why does this take so long?
 	if x < 0 or x >= width or y < 0 or y >= height:
 		return 0.0
 	return grid[_grid_to_index(x, y)]

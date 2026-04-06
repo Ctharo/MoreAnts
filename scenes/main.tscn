@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://b8d0sl0jawxlt"]
 
 [ext_resource type="Script" uid="uid://d3lx7qeco2bth" path="res://main.gd" id="1_main"]
-[ext_resource type="Script" uid="uid://c18bsxisa7on1" path="res://scripts/world/world.gd" id="2_world"]
+[ext_resource type="Script" uid="uid://c18bsxisa7on1" path="res://scripts/world/simulation_world.gd" id="2_world"]
 [ext_resource type="Script" uid="uid://bd2xlq5nrnbhi" path="res://scripts/colony/colony.gd" id="3_colony"]
 
 [node name="Main" type="Node2D" unique_id=282273254]
